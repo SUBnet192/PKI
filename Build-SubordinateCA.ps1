@@ -109,7 +109,7 @@ Invoke-Command $OfflineRootCAServer -credential $OfflineRootCACreds -scriptblock
     
     # Retrieve Subordinate CA certificate
     Write-Host "[REMOTE] Retrieving/Exporting Subordinate certificate" -ForegroundColor Magenta
-    certreq -config $OfflineRootCAServer\$OfflineRootCAName -retrieve 2 "C:\CAConfig\SubordinateCA.crt"
+    certreq -config $OfflineRootCAServer\$OfflineRootCAName -retrieve 2 "C:\CAConfig\SubordinateCA.crt" | Out-Null
     
     # Rename Root CA certificate (remove server name)
     Write-Host "[REMOTE] Correcting certificate filename and cleanup" -ForegroundColor Magenta
