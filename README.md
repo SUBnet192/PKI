@@ -1,9 +1,7 @@
 # PKI
-PKI Infrastructure build
+Microsoft PKI 2-Tier infrastructure build
 
-In the past year I have been working on ransomware recovery/infrastructure improvement post incident. One thing that is always missing at each customer location is a PKI infrastructure, to implement LDAPs amongst other things.
-
-Doing it over and over gets tedious, so I decided to script the build from A-Z.
+In the past year I have been working on ransomware recovery/infrastructure improvements post-incident. One thing that is always missing at each customer location is a PKI infrastructure, to implement LDAPs amongst other things.
 
 Last year I attempted to do so with a DSC script but I didn't like the end result, so I rebuilt it from scratch over the past 2 weeks.
 
