@@ -196,13 +196,13 @@ if ($webManagementService.Status -eq "Running") {
 }
  
 # Modify the EnableRemoteManagement property in the Windows Registry
-Write-Host "[EXEC] Setting the IIS EnableRemoteManagement property" -ForegroundColor Yellow
+Write-Host "[EXEC] Setting the IIS EnableRemoteManagement property" -ForegroundColor Green
 $enableRemoteManagement = Get-ItemProperty HKLM:\SOFTWARE\Microsoft\WebManagement\Server -Name "EnableRemoteManagement"
 if ($enableRemoteManagement.EnableRemoteManagement -eq 0) {
     Set-ItemProperty HKLM:\SOFTWARE\Microsoft\WebManagement\Server -Name "EnableRemoteManagement" -Value 1 -ErrorAction Stop  | Out-Null
 }
  
 # Ensure automatic start of the WMSVC service
-Write-Host "[EXEC] Starting the WMSVC service and enabling automatic startup" -ForegroundColor Yellow
+Write-Host "[EXEC] Starting the WMSVC service and enabling automatic startup" -ForegroundColor Green
 Start-Service WMSVC | Out-Null
 Set-Service WMSVC -StartupType Automatic | Out-Null
