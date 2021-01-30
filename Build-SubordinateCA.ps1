@@ -97,9 +97,9 @@ Invoke-Command $OfflineRootCAServer -credential $OfflineRootCACreds -scriptblock
     $SubordinateCAReq = Get-ChildItem "C:\CAConfig\*.req"
     
     # Submit CSR from Subordinate CA to the Root CA
-    #Write-Host "[DEBUG] ORCAServer:$OfflineRootCAServer" -ForegroundColor Yellow
-    #Write-Host "[DEBUG] ORCAName:$OfflineRootCAName" -ForegroundColor Yellow
-    #Write-Host "[DEBUG] SubordinateCAReq:$SubordinateCAReq" -ForegroundColor Yellow
+    Write-Host "[DEBUG] ORCAServer:$OfflineRootCAServer" -ForegroundColor Yellow
+    Write-Host "[DEBUG] ORCAName:$OfflineRootCAName" -ForegroundColor Yellow
+    Write-Host "[DEBUG] SubordinateCAReq:$SubordinateCAReq" -ForegroundColor Yellow
     Write-Host "[REMOTE] Submitting Subordinate certificate request to Root CA" -ForegroundColor Magenta
     certreq -config $OfflineRootCAServer\$OfflineRootCAName -submit -attrib "CertificateTemplate:SubCA" $SubordinateCAReq.Fullname | Out-Null
     
@@ -109,7 +109,7 @@ Invoke-Command $OfflineRootCAServer -credential $OfflineRootCACreds -scriptblock
     
     # Retrieve Subordinate CA certificate
     Write-Host "[REMOTE] Retrieving/Exporting Subordinate certificate" -ForegroundColor Magenta
-    certreq -config $OfflineRootCAServer\$OfflineRootCAName -retrieve 2 "C:\CAConfig\SubordinateCA.crt" | Out-Null
+    certreq -config $OfflineRootCAServer\$OfflineRootCAName -retrieve 2 "C:\CAConfig\SubordinateCA.crt"
     
     # Rename Root CA certificate (remove server name)
     Write-Host "[REMOTE] Correcting certificate filename and cleanup" -ForegroundColor Magenta
