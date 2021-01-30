@@ -206,3 +206,6 @@ if ($enableRemoteManagement.EnableRemoteManagement -eq 0) {
 Write-Host "[EXEC] Starting the WMSVC service and enabling automatic startup" -ForegroundColor Green
 Start-Service WMSVC | Out-Null
 Set-Service WMSVC -StartupType Automatic | Out-Null
+
+Write-Host "`n"
+Write-Host "[THE END]" -ForegroundColor Green
