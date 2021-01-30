@@ -6,7 +6,8 @@ In the past year I have been working on ransomware recovery/infrastructure impro
 Last year I attempted to do so with a DSC script but I didn't like the end result, so I rebuilt it from scratch over the past 2 weeks.
 
 Steps:
-
+- Obtain your own OID at https://pen.iana.org/pen/PenApplication.page
+- Create a DNS CNAME named "pki" or something else for your Enterprise Subordinate CA.
 - This is designed to be deployed on Server Core servers (Tested on Windows 2019 Core)
 - Deploy 2 server core instances.
 - One for the Offline Root CA
