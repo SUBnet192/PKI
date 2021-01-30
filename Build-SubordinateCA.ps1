@@ -13,7 +13,7 @@
   None
 
 .NOTES
-  Version:        1.0
+  Version:        1.1
   Author:         Marc Bouchard
   Creation Date:  2021/01/30
   Purpose/Change: Initial script development
