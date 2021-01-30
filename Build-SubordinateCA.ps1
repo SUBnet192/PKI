@@ -29,7 +29,7 @@
 $ErrorActionPreference = "Stop"
 
 Clear-Host
-Write-Host "Build-SubordinateCA.ps1 ---- Revision 1.2" -Foreground Green
+Write-Host "Build-SubordinateCA.ps1 - v1.0" -Foreground Green
 Write-Host "[INIT] Configure WinRM" -ForegroundColor Cyan
 Set-Item WSMan:\localhost\Client\TrustedHosts -Value "*" -Force  | Out-Null
 
@@ -39,7 +39,7 @@ Add-WindowsFeature -Name ADCS-Cert-Authority, ADCS-Web-Enrollment, Web-Mgmt-Serv
 #----------------------------------------------------[ Declarations ]-----------------------------------------------------
 
 # Change this to a local repository if you prefer
-$CAPolicyLocation = "https://raw.githubusercontent.com/SUBnet192/inf/main/CAPolicy.inf.subordinate"
+$CAPolicyLocation = "https://raw.githubusercontent.com/SUBnet192/PKI/master/capolicy.inf.subordinate"
 
 #----------------------------------------------------[ Execution ]-----------------------------------------------------
 
