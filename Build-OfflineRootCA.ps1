@@ -1,5 +1,25 @@
-# Call this script from a powershell command prompt using this command:
-# Invoke-WebRequest -usebasicparsing -uri "https://raw.githubusercontent.com/SUBnet192/PKI/master/Build-OfflineRootCA.ps1" | Invoke-Expression
+<#
+.SYNOPSIS
+  Build Offline Root CA in a two-tier PKI infrastructure
+.DESCRIPTION
+  Automate the installation and configuration of a Root Certificate Authority using
+  the Microsoft PKI Services. This is designed to be executed on a Server Core instance.
+.INPUTS
+  None
+.OUTPUTS
+  None
+.NOTES
+  Version:        1.0
+  Author:         Marc Bouchard
+  Creation Date:  2021/01/30
+  Purpose/Change: Initial script development
+  
+.EXAMPLE
+  Install from Github using:
+  Invoke-WebRequest -usebasicparsing -uri "https://raw.githubusercontent.com/SUBnet192/PKI/master/Build-SubordinateCA.ps1" | Invoke-Expression
+#>
+
+#-------------------------------------------------------[ INIT ]----------------------------------------------------------
 
 $response = $null
 $OfflineCAName = $null
