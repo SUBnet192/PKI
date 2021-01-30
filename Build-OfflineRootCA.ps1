@@ -29,9 +29,6 @@ Clear-Host
 Write-Host "Building Offline Root CA" -ForegroundColor Green
 write-host "`n"
 
-Write-Host "... Setting default shell to Powershell" -ForegroundColor Green
-Set-ItemProperty -Path 'HKLM:\Software\Microsoft\Windows NT\CurrentVersion\WinLogon' -Name Shell -Value 'PowerShell.exe' | Out-null
-
 Write-Host "... Enable PS Remoting" -ForegroundColor Green
 Enable-PSRemoting -SkipNetworkProfileCheck -Force
 
