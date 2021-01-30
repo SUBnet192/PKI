@@ -13,7 +13,6 @@ Steps:
 - One for the Enterprise Subordinate CA
 - Setup your IP information on both servers
 - Run the Setup-CoreBasics.ps1 first (this is a WIP)
-  - Apply the latest Windows Updates (this will be added to the CoreBasics script soon)
 - On the Offline Root CA server (not domain joined), run the Build-OfflineRootCA.ps1
 - On the Subordinate CA server (domain joined, and logged in using a domain account), run the Build-SubordinateCA.ps1
 - Offline Root CA certificate is valid for 20 years.
