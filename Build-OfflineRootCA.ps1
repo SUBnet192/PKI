@@ -27,18 +27,27 @@ $OID = $null
 
 #--------------------------------------------------------[ Declaration ]----------------------------------------------------------
 
-Function Show-Disclaimer {
+ Function Show-Disclaimer {
     Clear-Host
+    Write-Host "8888888b.                   888          .d8888b.        d8888 " -ForegroundColor Yellow
+    Write-Host "888   Y88b                  888         d88P  Y88b      d88888 " -ForegroundColor Yellow
+    Write-Host "888    888                  888         888    888     d88P888 " -ForegroundColor Yellow
+    Write-Host "888   d88P .d88b.   .d88b.  888888      888           d88P 888 " -ForegroundColor Yellow
+    Write-Host "8888888P' d88''88b d88''88b 888         888          d88P  888 " -ForegroundColor Yellow
+    Write-Host "888 T88b  888  888 888  888 888         888    888  d88P   888 " -ForegroundColor Yellow
+    Write-Host "888  T88b Y88..88P Y88..88P Y88b.       Y88b  d88P d8888888888 " -ForegroundColor Yellow
+    Write-Host "888   T88b 'Y88P'   'Y88P'   'Y888       'Y8888P' d88P     888 " -ForegroundColor Yellow
+    Write-Host ""
     Write-Host "IMPORTANT INFORMATION - PLEASE READ" -ForegroundColor Yellow
-    Write-Host "`n" -ForegroundColor Yellow
+    Write-Host ""
     Write-Host "This script is used to build an Offline Root Certificate server in a 2-tier Microsoft PKI solution" -ForegroundColor Yellow
     Write-Host "Please REVIEW the contents of this script to ensure the default values provided meet your requirements." -ForegroundColor Yellow
-    Write-Host "`n" -ForegroundColor Yellow
+    Write-Host ""
     Write-Host "Tips:" -ForegroundColor Yellow
     Write-Host " - If running on a virtual machine, take a snapshot before starting, and another one at completion." -ForegroundColor Yellow
     Write-Host "   This allows you to either restart fresh or recover/revert if anything fails with the subordinate CA." -ForegroundColor Yellow
     Write-Host " - Once the subordinate CA is built and active, disconnect the network and shutdown the Root CA until needed again." -ForegroundColor Yellow
-    Write-Host "`n" -ForegroundColor Yellow
+    Write-Host ""
     Write-Host -NoNewLine "Press any key to continue..." -ForegroundColor Yellow
     $null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
 }
