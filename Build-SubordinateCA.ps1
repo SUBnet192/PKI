@@ -28,6 +28,38 @@
 #Set Error Action to Silently Continue
 $ErrorActionPreference = "Stop"
 
+# Change this to a local repository if you prefer
+$CAPolicyLocation = "https://raw.githubusercontent.com/SUBnet192/PKI/master/capolicy.inf.subordinate"
+
+#----------------------------------------------------[ Declarations ]-----------------------------------------------------
+
+Function Show-Disclaimer {
+   Clear-Host
+   Write-Host " .d8888b.           888            .d8888b.        d8888 " -ForegroundColor Yellow 
+   Write-Host "d88P  Y88b          888           d88P  Y88b      d88888 " -ForegroundColor Yellow
+   Write-Host "Y88b.               888           888    888     d88P888 " -ForegroundColor Yellow
+   Write-Host " 'Y888b.   888  888 88888b.       888           d88P 888 " -ForegroundColor Yellow
+   Write-Host "    'Y88b. 888  888 888 '88b      888          d88P  888 " -ForegroundColor Yellow
+   Write-Host "      '888 888  888 888  888      888    888  d88P   888 " -ForegroundColor Yellow
+   Write-Host "Y88b  d88P Y88b 888 888 d88P      Y88b  d88P d8888888888 " -ForegroundColor Yellow
+   Write-Host " 'Y8888P'   'Y88888 88888P'        'Y8888P' d88P     888 " -ForegroundColor Yellow
+   Write-Host ""
+   Write-Host "IMPORTANT INFORMATION - PLEASE READ" -ForegroundColor Yellow
+   Write-Host ""
+   Write-Host "This script is used to build an Enterprise Subordinate Certificate server in a 2-tier Microsoft PKI solution" -ForegroundColor Yellow
+   Write-Host "Please REVIEW the contents of this script to ensure the default values provided meet your requirements." -ForegroundColor Yellow
+   Write-Host ""
+   Write-Host "Tips:" -ForegroundColor Yellow
+   Write-Host " - If running on a virtual machine, take a snapshot before starting, and another one at completion." -ForegroundColor Yellow
+   Write-Host "   This allows you to either restart fresh or recover/revert if anything fails with the subordinate CA." -ForegroundColor Yellow
+   Write-Host ""
+   Write-Host -NoNewLine "Press any key to continue..." -ForegroundColor Yellow
+   $null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
+}
+
+#----------------------------------------------------[ Execution ]-----------------------------------------------------
+
+Show-Disclaimer
 Clear-Host
 Write-Host "Build-SubordinateCA.ps1 - v1.0" -Foreground Green
 Write-Host "[INIT] Configure WinRM" -ForegroundColor Cyan
@@ -35,14 +67,6 @@ Set-Item WSMan:\localhost\Client\TrustedHosts -Value "*" -Force  | Out-Null
 
 Write-Host "[INIT] Adding required Windows Features" -ForegroundColor Cyan
 Add-WindowsFeature -Name ADCS-Cert-Authority, ADCS-Web-Enrollment, Web-Mgmt-Service -IncludeManagementTools | Out-Null
-
-#----------------------------------------------------[ Declarations ]-----------------------------------------------------
-
-# Change this to a local repository if you prefer
-$CAPolicyLocation = "https://raw.githubusercontent.com/SUBnet192/PKI/master/capolicy.inf.subordinate"
-
-#----------------------------------------------------[ Execution ]-----------------------------------------------------
-
 Write-Host "[EXEC] Retrieving CAPolicy.inf" -ForegroundColor Green
 Invoke-WebRequest -usebasicparsing -Uri $CAPolicyLocation -Outfile "C:\Windows\CAPolicy.inf"
 
