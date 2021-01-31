@@ -35,8 +35,29 @@ Enable-PSRemoting -SkipNetworkProfileCheck -Force
 Write-Host "... Creating C:\Scripts folder" -ForegroundColor Green
 New-Item -Path C:\ -Name Scripts -ItemType Directory -Force | Out-Null
 
-Write-Host "... Retrieving CAPolicy.inf from Github" -ForegroundColor Green
+Write-Host "... Create CAPolicy.inf from Github" -ForegroundColor Green
 Invoke-WebRequest -usebasicparsing -Uri "https://raw.githubusercontent.com/SUBnet192/PKI/master/capolicy.inf.offlineroot" -Outfile "C:\Windows\CAPolicy.inf"
+
+$CAPolicyInf = @"[Version]
+Signature="`$Windows NT$"
+[PolicyStatementExtension]
+Policies=InternalPolicy
+[InternalPolicy]
+OID= 1.3.6.1.4.1.YOUR-OID < [FIX THIS] >
+Notice="Legal Policy Statement"
+URL=http://pki.yourowndomain.com/pki/cps.html < [FIX THIS] >
+[Certsrv_Server]
+RenewalKeyLength=4096
+RenewalValidityPeriod=Years
+RenewalValidityPeriodUnits=20
+CRLPeriod=Years
+CRLPeriodUnits=20
+CRLDeltaPeriod=Days
+CRLDeltaPeriodUnits=0
+LoadDefaultTemplates=0
+AlternateSignatureAlgorithm=1"@
+
+$CAPolicyInf | Out-File "C:\Windows\CAPolicy.inf" -Encoding utf8 -Force
 
 do {
     Write-Host "... Editing CAPolicy.inf" -ForegroundColor Green
