@@ -35,8 +35,7 @@ Enable-PSRemoting -SkipNetworkProfileCheck -Force
 Write-Host "... Creating C:\Scripts folder" -ForegroundColor Green
 New-Item -Path C:\ -Name Scripts -ItemType Directory -Force | Out-Null
 
-Write-Host "... Create CAPolicy.inf from Github" -ForegroundColor Green
-Invoke-WebRequest -usebasicparsing -Uri "https://raw.githubusercontent.com/SUBnet192/PKI/master/capolicy.inf.offlineroot" -Outfile "C:\Windows\CAPolicy.inf"
+Write-Host "... Create CAPolicy.inf" -ForegroundColor Green
 
 $CAPolicyInf = @"[Version]
 Signature="`$Windows NT$"
