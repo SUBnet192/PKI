@@ -13,6 +13,7 @@ Steps:
 - One for the Offline Root CA
 - One for the Enterprise Subordinate CA
 - Setup your IP information on both servers
+  (Offline Root CA is not supposed to be network attached at all as per definition. While there is a small risk, I would say that having it connected for the duration of the build and then shut down after the Subordinate is issued isn't a major concern.)
 - Run the Setup-CoreBasics.ps1 first (this is a WIP)
 - On the Offline Root CA server (not domain joined), run the Build-OfflineRootCA.ps1
 - On the Subordinate CA server (domain joined, and logged in using a domain account), run the Build-SubordinateCA.ps1
