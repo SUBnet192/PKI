@@ -65,19 +65,33 @@ Report-Status "Building Offline Root CA" 0 Green
 Report-Status "Enable PS Remoting" 0 Green
 Enable-PSRemoting -SkipNetworkProfileCheck -Force | Out-Null
 
-# Query user for OID number
+#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=[ User Input ]=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+$response = $null
 [regex] $OIDRegex = "^\d{5}$"
 do {
-    $OID = read-host "Please enter your 5 digit OID number: "
-} while ($OID -inotmatch $OIDRegex)
+    # Query user for Root CA Common Name
+    Report-Status "Enter the Common Name for the Offline root CA (ex: Corp-Root-CA):" 1 Yellow
+    $OfflineCAName = Read-Host
 
-do {
+    do {
+        Report-Status "Please enter your 5 digit OID number:" 1 Yellow
+        $OID = read-host
+    } while ($OID -inotmatch $OIDRegex)
+
     Report-Status "Enter the URL where the CRL files will be located (ex: pki.mycompany.com): " 1 Yellow
     $httpCRLPath = Read-Host
-    Report-Status "Are you satisfied with the URL '$httpCRLPath'? [y/n]" 1 Yellow
+
+    Report-Status "You have provided the following information:" 1 Yellow
+    Write-Host "CA Common Name: $OfflineCAName"
+    Write-Host "OID           : $OID"
+    Write-Host "CRL URL path  : $httpCRLPath"
+
+    Report-Status "Are you satisfied with these answers'? [y/n]" 1 Yellow
     $response = Read-Host
 } until ($response -eq 'y')
-$response = $null
+
+#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=[ End User Input ]=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
 Report-Status "Create CAPolicy file" 0 Green
 
@@ -117,15 +131,6 @@ Report-Status "Installing required Windows Features" 0 Green
 Add-WindowsFeature -Name ADCS-Cert-Authority -IncludeManagementTools | Out-Null
 
 Report-Status "Install and configure AD Certificate Services" 0 Green
-
-do {
-    Report-Status "Enter the Common Name for the Offline root CA (ex: Corp-Root-CA):" 1 Yellow
-    $OfflineCAName = Read-Host
-    Report-Status "Are you satisfied with the CA Name '$OfflineCAName'? [y/n]" 1 Yellow
-    $response = Read-Host
-} until ($response -eq 'y')
-
-$response = $null
 
 # Configure Offline Root CA
 # Certificate Validity: 10 years
