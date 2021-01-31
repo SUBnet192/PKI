@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Build Offline Root CA in a two-tier PKI infrastructure
+  Build Offline Root CA (ORCA) in a two-tier PKI infrastructure
 .DESCRIPTION
   Automate the installation and configuration of a Root Certificate Authority using
   the Microsoft PKI Services. This is designed to be executed on a Server Core instance.
@@ -52,27 +52,27 @@ Function Report-Status {
         )
         Switch ($Lvl)
         {
-            0 { Write-Host -Foreground $Color "[EXEC] "$Msg }
-            1 { Write-Host -Foreground $Color "[USER INPUT] " $Msg }
-            2 { Write-Host -Foreground $Color "[...] " $Msg }
+            0 { Write-Host -Foreground $Color "[EXEC]" $Msg }
+            1 { Write-Host -Foreground $Color "[QUERY]" $Msg }
         }
     }
 
 #---------------------------------------------------------[ Execution ]----------------------------------------------------------
 
-Clear-Host
 Show-Disclaimer
+
+Clear-Host
 Report-Status "Building Offline Root CA" 0 Green
 
 Report-Status "Enable PS Remoting" 0 Green
-Enable-PSRemoting -SkipNetworkProfileCheck -Force
+Enable-PSRemoting -SkipNetworkProfileCheck -Force | Out-Null
 
 # Query user for OID number
-[regex] $ssn4 = "^\d{4}$"
+[regex] $OIDRegex = "^\d{5}$"
 do
 {
 	$OID = read-host "Please enter your 5 digit OID number: "
-} while ($OID -inotmatch $ssn4)
+} while ($OID -inotmatch $OIDRegex)
 
 do {
     Report-Status "Enter the URL where the CRL files will be located (ex: pki.mycompany.com): " 1 Yellow
@@ -109,30 +109,26 @@ LoadDefaultTemplates=0
 AlternateSignatureAlgorithm=1
 "@
 
-$CAPolicyInf | Out-File "C:\Windows\CAPolicy.inf" -Encoding utf8 -Force
-
-Report-Status "Building Offline Root CA" 0 Green
+$CAPolicyInf | Out-File "C:\Windows\CAPolicy.inf" -Encoding utf8 -Force | Out-Null
 
 do {
-    Write-Host "... Editing CAPolicy.inf" -ForegroundColor Green
-    Start-Process -Wait -FilePath "notepad.exe" -ArgumentList "c:\windows\capolicy.inf"
-    write-host "`n"
     Get-Content C:\Windows\CAPolicy.inf
     write-host "`n"
-    Write-Host 'Are you satisfied with the contents of CAPolicy.inf? [y/n] ' -NoNewline -ForegroundColor Yellow
+    Report-Status "Are you satisfied with the contents of CAPolicy.inf? [y/n]" 1 Yellow
     $response = Read-Host
 } until ($response -eq 'y')
 
 $response = $null
 
-Write-Host "... Install Windows Feature: AD Certificate Services" -ForegroundColor Green
-Add-WindowsFeature -Name ADCS-Cert-Authority -IncludeManagementTools
+Report-Status "Installing required Windows Features" 0 Green
+Add-WindowsFeature -Name ADCS-Cert-Authority -IncludeManagementTools | Out-Null
 
-Write-Host "... Install and configure AD Certificate Services" -ForegroundColor Green
+Report-Status "Install and configure AD Certificate Services" 0 Green
+
 do {
-    Write-Host 'Enter the Common Name for the Offline root CA (ex: Corp-Root-CA): ' -NoNewline -ForegroundColor Yellow
+    Report-Status "Enter the Common Name for the Offline root CA (ex: Corp-Root-CA):" 1 Yellow
     $OfflineCAName = Read-Host
-    Write-Host "Are you satisfied with the CA Name '$OfflineCAName'? [y/n] " -NoNewline -ForegroundColor Yellow
+    Report-Status "Are you satisfied with the CA Name '$OfflineCAName'? [y/n]" 1 Yellow
     $response = Read-Host
 } until ($response -eq 'y')
 
@@ -143,27 +139,29 @@ $response = $null
 # Key Length: 4096
 # Hash: SHA256
 
-Install-AdcsCertificationAuthority -CAType StandaloneRootCA -CACommonName $OfflineCAName -KeyLength 4096 -HashAlgorithm SHA256 -CryptoProviderName "RSA#Microsoft Software Key Storage Provider" -ValidityPeriod Years -ValidityPeriodUnits 10 -Force
+Install-AdcsCertificationAuthority -CAType StandaloneRootCA -CACommonName $OfflineCAName -KeyLength 4096 -HashAlgorithm SHA256 -CryptoProviderName "RSA#Microsoft Software Key Storage Provider" -ValidityPeriod Years -ValidityPeriodUnits 10 -Force | Out-Null
 
-Write-Host "... Customizing AD Certificate Services" -ForegroundColor Green
+Report-Status "Customizing AD Certificate Services" 0 Green
+Get-CACrlDistributionPoint | Remove-CACrlDistributionPoint -Force | Out-Null
 
-$crllist = Get-CACrlDistributionPoint; foreach ($crl in $crllist) {Remove-CACrlDistributionPoint $crl.uri -Force};
+Add-CACRLDistributionPoint -Uri "$env:windir\system32\CertSrv\CertEnroll\<CaName><CRLNameSuffix><DeltaCRLAllowed>.crl" -PublishToServer -PublishDeltaToServer -Force | Out-Null
+Add-CACRLDistributionPoint -Uri "C:\CAConfig\<CaName><CRLNameSuffix><DeltaCRLAllowed>.crl" -PublishToServer -PublishDeltaToServer -Force | Out-Null
+Add-CACRLDistributionPoint -Uri "http://$httpCRLPath/certenroll/<CAName><CRLNameSuffix><DeltaCRLAllowed>.crl" -AddToCertificateCDP -AddToFreshestCrl -Force | Out-Null
 
-Add-CACRLDistributionPoint -Uri "$env:windir\system32\CertSrv\CertEnroll\<CaName><CRLNameSuffix><DeltaCRLAllowed>.crl" -PublishToServer -PublishDeltaToServer -Force
-Add-CACRLDistributionPoint -Uri "C:\CAConfig\<CaName><CRLNameSuffix><DeltaCRLAllowed>.crl" -PublishToServer -PublishDeltaToServer -Force
-Add-CACRLDistributionPoint -Uri "http://$httpCRLPath/certenroll/<CAName><CRLNameSuffix><DeltaCRLAllowed>.crl" -AddToCertificateCDP -AddToFreshestCrl -Force
-
-Get-CAAuthorityInformationAccess | where {$_.Uri -like '*ldap*' -or $_.Uri -like '*http*' -or $_.Uri -like '*file*'} | Remove-CAAuthorityInformationAccess -Force
-Add-CAAuthorityInformationAccess -Uri "http://$httpCRLPath/certenroll/<CAName><CertificateName>.crt" -AddToCertificateAia -Force 
+Get-CAAuthorityInformationAccess | where {$_.Uri -like '*ldap*' -or $_.Uri -like '*http*' -or $_.Uri -like '*file*'} | Remove-CAAuthorityInformationAccess -Force | Out-Null
+Add-CAAuthorityInformationAccess -Uri "http://$httpCRLPath/certenroll/<CAName><CertificateName>.crt" -AddToCertificateAia -Force  | Out-Null
 
 # Set Validity period and other settings of certificates generated by this CA
-certutil.exe -setreg CA\ValidityPeriodUnits 5
-certutil.exe -setreg CA\ValidityPeriod "Years"
-certutil.exe -setreg CA\CRLOverlapPeriodUnits 3
-certutil.exe -setreg CA\CRLOverlapPeriod "Weeks"
-certutil.exe -setreg CA\AuditFilter 127
-Write-Host "... Restarting AD Certificate Services" -ForegroundColor Green
-Restart-Service certsvc
+certutil.exe -setreg CA\ValidityPeriodUnits 5 | Out-Null
+certutil.exe -setreg CA\ValidityPeriod "Years" | Out-Null
+certutil.exe -setreg CA\CRLOverlapPeriodUnits 3 | Out-Null
+certutil.exe -setreg CA\CRLOverlapPeriod "Weeks" | Out-Null
+certutil.exe -setreg CA\AuditFilter 127 | Out-Null
+Report-Status "Restarting AD Certificate Services" 0 Green
+Restart-Service certsvc | Out-Null
 Start-Sleep 5
-Write-Host "... Publishing CRL" -ForegroundColor Green
-certutil -crl
+Report-Status "Publishing CRL" 0 Green
+certutil -crl | Out-Null
+Report-Status "Root CA Build Completed!" 0 Green
+Report-Status "NOTE: Take a snapshot at this point before proceeding with the Subordinate CA installation." 0 Green
+
