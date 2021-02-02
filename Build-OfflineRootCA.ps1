@@ -74,6 +74,9 @@ Report-Status "Building Offline Root CA" 0 Green
 Report-Status "Enable PS Remoting" 0 Green
 Enable-PSRemoting -SkipNetworkProfileCheck -Force | Out-Null
 
+Report-Status "Configuring Auditing" 0 Green
+auditpol /set /category:"Object Access" /failure:enable /success:enable | Out-Null
+
 #=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=[ User Input ]=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
 $response = $null
