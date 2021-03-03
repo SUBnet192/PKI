@@ -26,8 +26,8 @@ There are some prompts during the installation, so it's not fully unattended (ne
 End result is a working PKI infrastructure in 30 mins max (from server core build to functional).
 
 Video of the Offline Root CA installation
-<div align="center">
-      <a href="https://www.youtube.com/embed/ixw1v1G5ods">
+<div align="left">
+      <a href="https://www.youtube.com/ixw1v1G5ods">
      <img 
       src="https://img.youtube.com/vi/ixw1v1G5ods/0.jpg" 
       alt="ORCA" 
