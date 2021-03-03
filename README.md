@@ -24,3 +24,6 @@ Steps:
 There are some prompts during the installation, so it's not fully unattended (need to edit the CAPolicy.inf files on both servers to enter your OID and the policy statement URL for example)
 
 End result is a working PKI infrastructure in 30 mins max (from server core build to functional).
+
+Video of the Offline Root CA installation
+https://youtu.be/ixw1v1G5ods
