@@ -10,22 +10,21 @@ Steps:
 - Create a DNS CNAME named "pki" or something else for your Enterprise Subordinate CA.
 - This is designed to be deployed on Server Core servers (Tested on Windows 2019 Core)
 - Deploy 2 server core instances.
-- One for the Offline Root CA
+- One for the Root CA
 - One for the Enterprise Subordinate CA
 - Setup your IP information on both servers
-  (Offline Root CA is not supposed to be network attached at all as per definition. While there is a small risk, I would say that having it connected for the duration of the build and then shut down after the Subordinate is issued isn't a major concern.)
-- Run the Setup-CoreBasics.ps1 first (this is a WIP)
-- On the Offline Root CA server (not domain joined), run the Build-OfflineRootCA.ps1
-- On the Subordinate CA server (domain joined, and logged in using a domain account), run the Build-SubordinateCA.ps1
-- Offline Root CA certificate is valid for 20 years.
-- Subordinate Enterprise CA certificate is valid for 10 years
+  (Root CA is not supposed to be network attached. While there is a small risk, I would say that having it connected for the duration of the build and then shut down after the Subordinate is issued isn't a major concern.)
+- On the Root CA server (not domain joined), run the Build-RootCA.ps1
+- On the Subordinate CA server (domain joined, and logged in using a domain account), run the Build-SubCA.ps1
+- Root CA certificate is valid for 10 years.
+- Subordinate Enterprise CA certificate is valid for 5 years
 - Issued certificates are valid for 1 year
 
-There are some prompts during the installation, so it's not fully unattended (need to edit the CAPolicy.inf files on both servers to enter your OID and the policy statement URL for example)
+There are some prompts during the installation, so it's not fully unattended, but all prompts are made at the beginning of the script.
 
-End result is a working PKI infrastructure in 30 mins max (from server core build to functional).
+End result is a working PKI infrastructure in 15 mins max (if you're starting from Windows virtual templates).
 
-Video of the Offline Root CA installation
+Video of the Root CA installation
 <div align="left">
       <a href="https://www.youtube.com/watch?v=ixw1v1G5ods">
      <img 
