@@ -257,7 +257,9 @@ $webManagementService = Get-Service WMSVC -ErrorAction Stop | Out-Null
 if ($webManagementService.Status -eq "Running") {
   Stop-Service WMSVC | Out-Null
 }
- 
+# Enable double escaping as per BPA
+appcmd set config /section:requestfiltering /allowdoubleescaping:true
+
 # Modify the EnableRemoteManagement property in the Windows Registry
 Report-Status "Setting the IIS EnableRemoteManagement property" 0 Green
 $enableRemoteManagement = Get-ItemProperty HKLM:\SOFTWARE\Microsoft\WebManagement\Server -Name "EnableRemoteManagement"
