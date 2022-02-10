@@ -24,6 +24,8 @@ There are some prompts during the installation, so it's not fully unattended, bu
 
 End result is a working PKI infrastructure in 15 mins max (if you're starting from Windows virtual templates).
 
+NOTE: These scripts must be run LOCALLY on the servers, not through remote powershell
+
 Video of the Root CA installation
 <div align="left">
       <a href="https://www.youtube.com/watch?v=ixw1v1G5ods">
