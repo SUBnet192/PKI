@@ -1530,7 +1530,8 @@ Function Backup-CAKeys {
         throw "CER file was not created at $cerPath"
       }
       $cerSize = (Get-Item $cerPath).Length
-      Report-Status "CA certificate (public key) exported: $cerPath ($([math]::Round($cerSize/1KB, 2)) KB)" 0 Green
+      $cerSizeKB = [math]::Round($cerSize / 1024, 2)
+      Report-Status "CA certificate (public key) exported: $cerPath ($cerSizeKB KB)" 0 Green
     }
     catch {
       Write-Error "Failed to export CER certificate: $_"
@@ -1547,7 +1548,8 @@ Function Backup-CAKeys {
           throw "Database backup directory was not created at $dbBackupPath"
         }
         $dbSize = (Get-ChildItem $dbBackupPath -Recurse | Measure-Object -Property Length -Sum).Sum
-        Report-Status "CA database backed up to: $dbBackupPath ($([math]::Round($dbSize/1KB, 2)) KB)" 0 Green
+        $dbSizeKB = [math]::Round($dbSize / 1024, 2)
+        Report-Status "CA database backed up to: $dbBackupPath ($dbSizeKB KB)" 0 Green
       }
       catch {
         Write-Warning "Failed to backup CA database: $_"
@@ -1576,8 +1578,8 @@ Backup Files:
 - Database: CADatabase-$timestamp
 
 File Verification:
-$(if (Test-Path $pfxPath) { "- PFX file exists: YES ($([math]::Round((Get-Item $pfxPath).Length/1KB, 2)) KB)" } else { "- PFX file exists: NO" })
-$(if (Test-Path $cerPath) { "- CER file exists: YES ($([math]::Round((Get-Item $cerPath).Length/1KB, 2)) KB)" } else { "- CER file exists: NO" })
+$(if (Test-Path $pfxPath) { $pfxManifestSize = (Get-Item $pfxPath).Length; $pfxManifestSizeKB = [math]::Round($pfxManifestSize / 1024, 2); "- PFX file exists: YES ($pfxManifestSizeKB KB)" } else { "- PFX file exists: NO" })
+$(if (Test-Path $cerPath) { $cerManifestSize = (Get-Item $cerPath).Length; $cerManifestSizeKB = [math]::Round($cerManifestSize / 1024, 2); "- CER file exists: YES ($cerManifestSizeKB KB)" } else { "- CER file exists: NO" })
 $(if (Test-Path (Join-Path $BackupPath "CADatabase-$timestamp")) { "- Database backup exists: YES" } else { "- Database backup exists: NO" })
 
 IMPORTANT SECURITY NOTES:
@@ -1948,14 +1950,20 @@ try {
           if ([string]::IsNullOrWhiteSpace($value)) {
             return "CRL URL path cannot be empty."
           }
-          # Simplified FQDN validation pattern
-          # Pattern 1: FQDN with multiple labels (e.g., pki.company.com)
-          $fqdnMultiPattern = '^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9](\.[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9])+\.[a-zA-Z]{2,}$'
-          # Pattern 2: Single label (e.g., pki)
-          $fqdnSinglePattern = '^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]$'
-          
-          if ($value -notmatch $fqdnMultiPattern -and $value -notmatch $fqdnSinglePattern) {
-            return "CRL URL path appears to be invalid. Expected format: pki.mycompany.com or similar FQDN."
+          # Simplified FQDN validation - use regex object to avoid parsing issues
+          try {
+            $fqdnMultiRegex = [regex]'^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9](\.[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9])+\.[a-zA-Z]{2,}$'
+            $fqdnSingleRegex = [regex]'^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]$'
+            
+            if (-not ($fqdnMultiRegex.IsMatch($value) -or $fqdnSingleRegex.IsMatch($value))) {
+              return "CRL URL path appears to be invalid. Expected format: pki.mycompany.com or similar FQDN."
+            }
+          }
+          catch {
+            # Fallback to simple validation if regex fails
+            if ($value -notmatch '^[a-zA-Z0-9.-]+$' -or $value.Length -lt 3) {
+              return "CRL URL path appears to be invalid. Expected format: pki.mycompany.com or similar FQDN."
+            }
           }
           return $true
         }
