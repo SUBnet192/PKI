@@ -97,19 +97,19 @@
 # All security settings use secure defaults (SHA-384, 4096-bit keys, etc.)
 [CmdletBinding(SupportsShouldProcess)]
 param(
-    # REQUIRED: Enable PSRemoting for SubCA installation
-    # The SubCA script requires PSRemoting to connect and retrieve certificates
-    # Default: Enabled (required for SubCA installation)
-    [Parameter(Mandatory=$false)]
-    [switch]$EnablePSRemoting,
+  # REQUIRED: Enable PSRemoting for SubCA installation
+  # The SubCA script requires PSRemoting to connect and retrieve certificates
+  # Default: Enabled (required for SubCA installation)
+  [Parameter(Mandatory = $false)]
+  [switch]$EnablePSRemoting,
     
-    # Optional: Create backup automatically after installation
-    [Parameter(Mandatory=$false)]
-    [switch]$CreateBackup,  # Default: Disabled (prompted if not specified)
+  # Optional: Create backup automatically after installation
+  [Parameter(Mandatory = $false)]
+  [switch]$CreateBackup,  # Default: Disabled (prompted if not specified)
     
-    # Optional: Custom backup path (defaults to SystemDrive\CA-Backup if not specified)
-    [Parameter(Mandatory=$false)]
-    [string]$BackupPath = $null
+  # Optional: Custom backup path (defaults to SystemDrive\CA-Backup if not specified)
+  [Parameter(Mandatory = $false)]
+  [string]$BackupPath = $null
 )
 
 #===========================================================================================================
@@ -142,33 +142,33 @@ $Script:ProgressActivity = "Building Root CA"
 
 # Initialize file-based logging (enabled by default)
 if (-not $script:DisableLogging) {
-    try {
-        if ([string]::IsNullOrWhiteSpace($script:LogPath)) {
-            $LogDir = Join-Path $env:ProgramData "PKI\Logs"
-        }
-        else {
-            $LogDir = Split-Path $script:LogPath -Parent
-        }
-        
-        if (-not (Test-Path $LogDir)) {
-            New-Item -ItemType Directory -Path $LogDir -Force -ErrorAction Stop | Out-Null
-        }
-        
-        if ([string]::IsNullOrWhiteSpace($script:LogPath)) {
-            $Script:LogPath = Join-Path $LogDir "RootCA-Build-$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
-        }
-        else {
-            $Script:LogPath = $script:LogPath
-        }
-        
-        Start-Transcript -Path $Script:LogPath -Append -ErrorAction Stop
-        Write-Host "Logging enabled: $Script:LogPath" -ForegroundColor Cyan
+  try {
+    if ([string]::IsNullOrWhiteSpace($script:LogPath)) {
+      $LogDir = Join-Path $env:ProgramData "PKI\Logs"
     }
-    catch {
-        Write-Warning "Failed to initialize logging: $_"
-        Write-Warning "Continuing without file logging..."
-        $Script:LogPath = $null
+    else {
+      $LogDir = Split-Path $script:LogPath -Parent
     }
+        
+    if (-not (Test-Path $LogDir)) {
+      New-Item -ItemType Directory -Path $LogDir -Force -ErrorAction Stop | Out-Null
+    }
+        
+    if ([string]::IsNullOrWhiteSpace($script:LogPath)) {
+      $Script:LogPath = Join-Path $LogDir "RootCA-Build-$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
+    }
+    else {
+      $Script:LogPath = $script:LogPath
+    }
+        
+    Start-Transcript -Path $Script:LogPath -Append -ErrorAction Stop
+    Write-Host "Logging enabled: $Script:LogPath" -ForegroundColor Cyan
+  }
+  catch {
+    Write-Warning "Failed to initialize logging: $_"
+    Write-Warning "Continuing without file logging..."
+    $Script:LogPath = $null
+  }
 }
 
 #===========================================================================================================
@@ -278,19 +278,19 @@ Function Report-Status {
 #>
 Function Read-UserInput {
   param(
-    [Parameter(Mandatory=$true)]
+    [Parameter(Mandatory = $true)]
     [string]$Prompt,
     
-    [Parameter(Mandatory=$false)]
+    [Parameter(Mandatory = $false)]
     [string]$Example = $null,
     
-    [Parameter(Mandatory=$false)]
+    [Parameter(Mandatory = $false)]
     [string]$HelpText = $null,
     
-    [Parameter(Mandatory=$false)]
+    [Parameter(Mandatory = $false)]
     [scriptblock]$Validation = $null,
     
-    [Parameter(Mandatory=$false)]
+    [Parameter(Mandatory = $false)]
     [string]$DefaultValue = $null
   )
   
@@ -399,13 +399,13 @@ Function Read-UserInput {
 #>
 Function Read-UserConfirmation {
   param(
-    [Parameter(Mandatory=$true)]
+    [Parameter(Mandatory = $true)]
     [string]$Message,
     
-    [Parameter(Mandatory=$false)]
+    [Parameter(Mandatory = $false)]
     [string]$HelpText = $null,
     
-    [Parameter(Mandatory=$false)]
+    [Parameter(Mandatory = $false)]
     [bool]$DefaultYes = $false
   )
   
@@ -601,9 +601,9 @@ Function Test-Prerequisites {
 #>
 Function Test-InputValidation {
   Param(
-    [Parameter(Mandatory=$true)][string]$RootCAName,
-    [Parameter(Mandatory=$true)][string]$OID,
-    [Parameter(Mandatory=$true)][string]$httpCRLPath
+    [Parameter(Mandatory = $true)][string]$RootCAName,
+    [Parameter(Mandatory = $true)][string]$OID,
+    [Parameter(Mandatory = $true)][string]$httpCRLPath
   )
   
   $errors = @()
@@ -681,10 +681,10 @@ Function Test-InputValidation {
 #>
 Function Import-ADCSModule {
   param(
-    [Parameter(Mandatory=$false)]
+    [Parameter(Mandatory = $false)]
     [int]$MaxRetries = 5,
     
-    [Parameter(Mandatory=$false)]
+    [Parameter(Mandatory = $false)]
     [int]$RetryDelaySeconds = 3
   )
   
@@ -876,7 +876,7 @@ Function Test-PostRebootScenario {
 #>
 Function Test-CAPolicyInfComplete {
   param(
-    [Parameter(Mandatory=$true)]
+    [Parameter(Mandatory = $true)]
     [string]$Path
   )
   
@@ -961,7 +961,7 @@ Function Test-CAPolicyInfComplete {
 #>
 Function Read-CAPolicyInf {
   param(
-    [Parameter(Mandatory=$true)]
+    [Parameter(Mandatory = $true)]
     [string]$Path
   )
   
@@ -1010,11 +1010,11 @@ Function Read-CAPolicyInf {
 #>
 Function New-CAPolicyInfContent {
   param(
-    [Parameter(Mandatory=$true)][string]$OID,
-    [Parameter(Mandatory=$true)][string]$httpCRLPath,
-    [Parameter(Mandatory=$false)][int]$KeyLength = 4096,
-    [Parameter(Mandatory=$false)][int]$CAValidityYears = 10,
-    [Parameter(Mandatory=$false)][int]$CRLPeriodYears = 1
+    [Parameter(Mandatory = $true)][string]$OID,
+    [Parameter(Mandatory = $true)][string]$httpCRLPath,
+    [Parameter(Mandatory = $false)][int]$KeyLength = 4096,
+    [Parameter(Mandatory = $false)][int]$CAValidityYears = 10,
+    [Parameter(Mandatory = $false)][int]$CRLPeriodYears = 1
   )
   
   return @"
@@ -1141,124 +1141,124 @@ Function Test-OfflineCASecurity {
   - CA certificate in store
 #>
 Function Test-CAConfiguration {
-    Report-Status "Validating CA configuration..." 0 Cyan
+  Report-Status "Validating CA configuration..." 0 Cyan
     
-    $errors = @()
-    $warnings = @()
+  $errors = @()
+  $warnings = @()
     
-    # Verify CA service is running
-    try {
-        $service = Get-Service -Name certsvc -ErrorAction Stop
-        if ($service.Status -ne 'Running') {
-            $errors += "Certificate Services is not running. Status: $($service.Status)"
-        }
-        else {
-            Report-Status "CA Service: Running" 0 Green
-        }
-    }
-    catch {
-        $errors += "Could not verify CA service: $_"
-    }
-    
-    # Verify CA object exists and is accessible
-    try {
-        # Ensure ADCS module is imported
-        if (-not (Import-ADCSModule)) {
-            $errors += "ADCS module is not available. Cannot verify CA configuration."
-            return $false
-        }
-        
-        $ca = Get-CertificationAuthority -ErrorAction Stop
-        if (-not $ca) {
-            $errors += "Could not retrieve CA configuration"
-        }
-        else {
-            Report-Status "CA Configuration: Found ($($ca.Name))" 0 Green
-        }
-    }
-    catch {
-        $errors += "Could not retrieve CA configuration: $_"
-        return $false
-    }
-    
-    # Verify CRL distribution points (should have at least 2: local, CAConfig, HTTP)
-    try {
-        $cdps = Get-CACrlDistributionPoint -ErrorAction Stop
-        if (-not $cdps -or $cdps.Count -lt 2) {
-            $warnings += "Expected at least 2 CRL distribution points, found: $($cdps.Count)"
-        }
-        else {
-            Report-Status "CRL Distribution Points: $($cdps.Count) configured" 0 Green
-        }
-    }
-    catch {
-        $warnings += "Could not verify CRL distribution points: $_"
-    }
-    
-    # Verify AIA entries
-    try {
-        $aias = Get-CAAuthorityInformationAccess -ErrorAction Stop
-        if (-not $aias -or $aias.Count -eq 0) {
-            $warnings += "No AIA entries found"
-        }
-        else {
-            Report-Status "AIA Entries: $($aias.Count) configured" 0 Green
-        }
-    }
-    catch {
-        $warnings += "Could not verify AIA entries: $_"
-    }
-    
-    # Verify CRL files exist
-    try {
-        $crlPath = Join-Path $env:SystemRoot "System32\CertSrv\CertEnroll\*.crl"
-        $crlFiles = Get-ChildItem $crlPath -ErrorAction SilentlyContinue
-        if (-not $crlFiles) {
-            $warnings += "No CRL files found in CertEnroll directory"
-        }
-        else {
-            Report-Status "CRL Files: Found $($crlFiles.Count) file(s)" 0 Green
-        }
-    }
-    catch {
-        $warnings += "Could not verify CRL files: $_"
-    }
-    
-    # Verify CA certificate exists in certificate store
-    try {
-        if ($ca) {
-            $caCert = Get-ChildItem Cert:\LocalMachine\My | Where-Object { 
-                $_.Subject -like "*CN=$($ca.Name)*" -or $_.Subject -like "*$($ca.Name)*"
-            } | Select-Object -First 1
-            if (-not $caCert) {
-                $warnings += "CA certificate not found in certificate store"
-            }
-            else {
-                Report-Status "CA Certificate: Found in certificate store" 0 Green
-            }
-        }
-    }
-    catch {
-        $warnings += "Could not verify CA certificate: $_"
-    }
-    
-    # Report results
-    if ($errors.Count -gt 0) {
-        Write-Error "CA Configuration Validation Failed:`n$($errors -join "`n")"
-        return $false
-    }
-    
-    if ($warnings.Count -gt 0) {
-        foreach ($warning in $warnings) {
-            Write-Warning $warning
-        }
-        Report-Status "CA Configuration: Valid with warnings" 0 Yellow
+  # Verify CA service is running
+  try {
+    $service = Get-Service -Name certsvc -ErrorAction Stop
+    if ($service.Status -ne 'Running') {
+      $errors += "Certificate Services is not running. Status: $($service.Status)"
     }
     else {
-        Report-Status "CA Configuration: Valid" 0 Green
+      Report-Status "CA Service: Running" 0 Green
     }
+  }
+  catch {
+    $errors += "Could not verify CA service: $_"
+  }
     
-    return $true
+  # Verify CA object exists and is accessible
+  try {
+    # Ensure ADCS module is imported
+    if (-not (Import-ADCSModule)) {
+      $errors += "ADCS module is not available. Cannot verify CA configuration."
+      return $false
+    }
+        
+    $ca = Get-CertificationAuthority -ErrorAction Stop
+    if (-not $ca) {
+      $errors += "Could not retrieve CA configuration"
+    }
+    else {
+      Report-Status "CA Configuration: Found ($($ca.Name))" 0 Green
+    }
+  }
+  catch {
+    $errors += "Could not retrieve CA configuration: $_"
+    return $false
+  }
+    
+  # Verify CRL distribution points (should have at least 2: local, CAConfig, HTTP)
+  try {
+    $cdps = Get-CACrlDistributionPoint -ErrorAction Stop
+    if (-not $cdps -or $cdps.Count -lt 2) {
+      $warnings += "Expected at least 2 CRL distribution points, found: $($cdps.Count)"
+    }
+    else {
+      Report-Status "CRL Distribution Points: $($cdps.Count) configured" 0 Green
+    }
+  }
+  catch {
+    $warnings += "Could not verify CRL distribution points: $_"
+  }
+    
+  # Verify AIA entries
+  try {
+    $aias = Get-CAAuthorityInformationAccess -ErrorAction Stop
+    if (-not $aias -or $aias.Count -eq 0) {
+      $warnings += "No AIA entries found"
+    }
+    else {
+      Report-Status "AIA Entries: $($aias.Count) configured" 0 Green
+    }
+  }
+  catch {
+    $warnings += "Could not verify AIA entries: $_"
+  }
+    
+  # Verify CRL files exist
+  try {
+    $crlPath = Join-Path $env:SystemRoot "System32\CertSrv\CertEnroll\*.crl"
+    $crlFiles = Get-ChildItem $crlPath -ErrorAction SilentlyContinue
+    if (-not $crlFiles) {
+      $warnings += "No CRL files found in CertEnroll directory"
+    }
+    else {
+      Report-Status "CRL Files: Found $($crlFiles.Count) file(s)" 0 Green
+    }
+  }
+  catch {
+    $warnings += "Could not verify CRL files: $_"
+  }
+    
+  # Verify CA certificate exists in certificate store
+  try {
+    if ($ca) {
+      $caCert = Get-ChildItem Cert:\LocalMachine\My | Where-Object { 
+        $_.Subject -like "*CN=$($ca.Name)*" -or $_.Subject -like "*$($ca.Name)*"
+      } | Select-Object -First 1
+      if (-not $caCert) {
+        $warnings += "CA certificate not found in certificate store"
+      }
+      else {
+        Report-Status "CA Certificate: Found in certificate store" 0 Green
+      }
+    }
+  }
+  catch {
+    $warnings += "Could not verify CA certificate: $_"
+  }
+    
+  # Report results
+  if ($errors.Count -gt 0) {
+    Write-Error "CA Configuration Validation Failed:`n$($errors -join "`n")"
+    return $false
+  }
+    
+  if ($warnings.Count -gt 0) {
+    foreach ($warning in $warnings) {
+      Write-Warning $warning
+    }
+    Report-Status "CA Configuration: Valid with warnings" 0 Yellow
+  }
+  else {
+    Report-Status "CA Configuration: Valid" 0 Green
+  }
+    
+  return $true
 }
 
 #-----------------------------------------------------------------------------------------------------------
@@ -1269,43 +1269,43 @@ Function Test-CAConfiguration {
   Exports CA configuration to JSON file for reuse or documentation
 #>
 Function Export-CAConfiguration {
-    param(
-        [Parameter(Mandatory=$true)]
-        [string]$Path,
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Path,
         
-        [Parameter(Mandatory=$false)]
-        [hashtable]$AdditionalConfig = @{}
-    )
+    [Parameter(Mandatory = $false)]
+    [hashtable]$AdditionalConfig = @{}
+  )
     
-    try {
-        $config = @{
-            RootCAName = $RootCAName
-            OID = $OID
-            httpCRLPath = $httpCRLPath
-            HashAlgorithm = $script:HashAlgorithm
-            KeyLength = $script:KeyLength
-            CAValidityYears = $script:CAValidityYears
-            CRLPeriodYears = $script:CRLPeriodYears
-            CertificateValidityYears = $script:CertificateValidityYears
-            CryptoProvider = $script:CryptoProvider
-            HSMProviderName = $script:HSMProviderName
-            ExportDate = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-            ExportComputer = $env:COMPUTERNAME
-        }
-        
-        # Merge additional configuration if provided
-        foreach ($key in $AdditionalConfig.Keys) {
-            $config[$key] = $AdditionalConfig[$key]
-        }
-        
-        $config | ConvertTo-Json -Depth 3 | Out-File $Path -Encoding UTF8 -ErrorAction Stop
-        Report-Status "Configuration exported to: $Path" 0 Green
-        return $true
+  try {
+    $config = @{
+      RootCAName               = $RootCAName
+      OID                      = $OID
+      httpCRLPath              = $httpCRLPath
+      HashAlgorithm            = $script:HashAlgorithm
+      KeyLength                = $script:KeyLength
+      CAValidityYears          = $script:CAValidityYears
+      CRLPeriodYears           = $script:CRLPeriodYears
+      CertificateValidityYears = $script:CertificateValidityYears
+      CryptoProvider           = $script:CryptoProvider
+      HSMProviderName          = $script:HSMProviderName
+      ExportDate               = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+      ExportComputer           = $env:COMPUTERNAME
     }
-    catch {
-        Write-Error "Failed to export configuration: $_"
-        return $false
+        
+    # Merge additional configuration if provided
+    foreach ($key in $AdditionalConfig.Keys) {
+      $config[$key] = $AdditionalConfig[$key]
     }
+        
+    $config | ConvertTo-Json -Depth 3 | Out-File $Path -Encoding UTF8 -ErrorAction Stop
+    Report-Status "Configuration exported to: $Path" 0 Green
+    return $true
+  }
+  catch {
+    Write-Error "Failed to export configuration: $_"
+    return $false
+  }
 }
 
 #-----------------------------------------------------------------------------------------------------------
@@ -1316,40 +1316,40 @@ Function Export-CAConfiguration {
   Imports CA configuration from JSON file (for reference/documentation)
 #>
 Function Import-CAConfiguration {
-    param(
-        [Parameter(Mandatory=$true)]
-        [string]$Path
-    )
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Path
+  )
     
-    try {
-        if (-not (Test-Path $Path)) {
-            throw "Configuration file not found: $Path"
-        }
-        
-        $config = Get-Content $Path -Raw | ConvertFrom-Json
-        
-        Write-Host ""
-        Write-Host "Imported Configuration:" -ForegroundColor Cyan
-        Write-Host "  CA Name: $($config.RootCAName)" -ForegroundColor Yellow
-        Write-Host "  OID: $($config.OID)" -ForegroundColor Yellow
-        Write-Host "  CRL URL: $($config.httpCRLPath)" -ForegroundColor Yellow
-        Write-Host "  Hash Algorithm: $($config.HashAlgorithm)" -ForegroundColor Yellow
-        Write-Host "  Key Length: $($config.KeyLength)" -ForegroundColor Yellow
-        Write-Host "  CA Validity: $($config.CAValidityYears) years" -ForegroundColor Yellow
-        Write-Host "  CRL Period: $($config.CRLPeriodYears) year(s)" -ForegroundColor Yellow
-        Write-Host "  Certificate Validity: $($config.CertificateValidityYears) year(s)" -ForegroundColor Yellow
-        Write-Host "  Crypto Provider: $($config.CryptoProvider)" -ForegroundColor Yellow
-        if ($config.ExportDate) {
-            Write-Host "  Exported: $($config.ExportDate) from $($config.ExportComputer)" -ForegroundColor Gray
-        }
-        Write-Host ""
-        
-        return $config
+  try {
+    if (-not (Test-Path $Path)) {
+      throw "Configuration file not found: $Path"
     }
-    catch {
-        Write-Error "Failed to import configuration: $_"
-        throw
+        
+    $config = Get-Content $Path -Raw | ConvertFrom-Json
+        
+    Write-Host ""
+    Write-Host "Imported Configuration:" -ForegroundColor Cyan
+    Write-Host "  CA Name: $($config.RootCAName)" -ForegroundColor Yellow
+    Write-Host "  OID: $($config.OID)" -ForegroundColor Yellow
+    Write-Host "  CRL URL: $($config.httpCRLPath)" -ForegroundColor Yellow
+    Write-Host "  Hash Algorithm: $($config.HashAlgorithm)" -ForegroundColor Yellow
+    Write-Host "  Key Length: $($config.KeyLength)" -ForegroundColor Yellow
+    Write-Host "  CA Validity: $($config.CAValidityYears) years" -ForegroundColor Yellow
+    Write-Host "  CRL Period: $($config.CRLPeriodYears) year(s)" -ForegroundColor Yellow
+    Write-Host "  Certificate Validity: $($config.CertificateValidityYears) year(s)" -ForegroundColor Yellow
+    Write-Host "  Crypto Provider: $($config.CryptoProvider)" -ForegroundColor Yellow
+    if ($config.ExportDate) {
+      Write-Host "  Exported: $($config.ExportDate) from $($config.ExportComputer)" -ForegroundColor Gray
     }
+    Write-Host ""
+        
+    return $config
+  }
+  catch {
+    Write-Error "Failed to import configuration: $_"
+    throw
+  }
 }
 
 #-----------------------------------------------------------------------------------------------------------
@@ -1369,7 +1369,7 @@ Function Import-CAConfiguration {
   CRITICAL: Store backups in secure, offline location. Protect backup password separately.
 #>
 Function Backup-CAKeys {
-  param([Parameter(Mandatory=$true)][string]$BackupPath)
+  param([Parameter(Mandatory = $true)][string]$BackupPath)
   
   Report-Status "Creating CA backup..." 0 Cyan
   
@@ -1865,27 +1865,6 @@ try {
             -Example "Corp-Root-CA" `
             -HelpText "This will be the display name of your Root Certificate Authority" `
             -Validation {
-              param($value)
-              if ([string]::IsNullOrWhiteSpace($value)) {
-                return "CA Common Name cannot be empty."
-              }
-              if ($value.Length -gt 64) {
-                return "CA Common Name cannot exceed 64 characters. Current length: $($value.Length)"
-              }
-              if ($value -notmatch '^[a-zA-Z0-9_\.\s-]+$') {
-                return "CA Common Name contains invalid characters. Only alphanumeric, hyphens, underscores, dots, and spaces are allowed."
-              }
-              return $true
-            }
-        }
-      }
-      else {
-        # Module not available, need CA name
-        $RootCAName = Read-UserInput `
-          -Prompt "CA Name not available. Please provide the Common Name for the Root CA:" `
-          -Example "Corp-Root-CA" `
-          -HelpText "This will be the display name of your Root Certificate Authority" `
-          -Validation {
             param($value)
             if ([string]::IsNullOrWhiteSpace($value)) {
               return "CA Common Name cannot be empty."
@@ -1898,6 +1877,27 @@ try {
             }
             return $true
           }
+        }
+      }
+      else {
+        # Module not available, need CA name
+        $RootCAName = Read-UserInput `
+          -Prompt "CA Name not available. Please provide the Common Name for the Root CA:" `
+          -Example "Corp-Root-CA" `
+          -HelpText "This will be the display name of your Root Certificate Authority" `
+          -Validation {
+          param($value)
+          if ([string]::IsNullOrWhiteSpace($value)) {
+            return "CA Common Name cannot be empty."
+          }
+          if ($value.Length -gt 64) {
+            return "CA Common Name cannot exceed 64 characters. Current length: $($value.Length)"
+          }
+          if ($value -notmatch '^[a-zA-Z0-9_\.\s-]+$') {
+            return "CA Common Name contains invalid characters. Only alphanumeric, hyphens, underscores, dots, and spaces are allowed."
+          }
+          return $true
+        }
       }
     }
     else {
@@ -1926,18 +1926,18 @@ try {
         -Example "Corp-Root-CA" `
         -HelpText "This will be the display name of your Root Certificate Authority. Maximum 64 characters." `
         -Validation {
-          param($value)
-          if ([string]::IsNullOrWhiteSpace($value)) {
-            return "CA Common Name cannot be empty."
-          }
-          if ($value.Length -gt 64) {
-            return "CA Common Name cannot exceed 64 characters. Current length: $($value.Length)"
-          }
-          if ($value -notmatch '^[a-zA-Z0-9_\.\s-]+$') {
-            return "CA Common Name contains invalid characters. Only alphanumeric, hyphens, underscores, dots, and spaces are allowed."
-          }
-          return $true
+        param($value)
+        if ([string]::IsNullOrWhiteSpace($value)) {
+          return "CA Common Name cannot be empty."
         }
+        if ($value.Length -gt 64) {
+          return "CA Common Name cannot exceed 64 characters. Current length: $($value.Length)"
+        }
+        if ($value -notmatch '^[a-zA-Z0-9_\.\s-]+$') {
+          return "CA Common Name contains invalid characters. Only alphanumeric, hyphens, underscores, dots, and spaces are allowed."
+        }
+        return $true
+      }
       
       # Collect OID
       $OID = Read-UserInput `
@@ -1945,12 +1945,12 @@ try {
         -Example "12345" `
         -HelpText "This is your IANA-assigned Private Enterprise Number (PEN). Must be exactly 5 digits." `
         -Validation {
-          param($value)
-          if ($value -notmatch '^\d{5}$') {
-            return "OID must be exactly 5 digits. Provided: $value"
-          }
-          return $true
+        param($value)
+        if ($value -notmatch '^\d{5}$') {
+          return "OID must be exactly 5 digits. Provided: $value"
         }
+        return $true
+      }
       
       # Collect CRL URL
       $httpCRLPath = Read-UserInput `
@@ -1958,36 +1958,36 @@ try {
         -Example "pki.mycompany.com" `
         -HelpText "This is the FQDN where your CRL files will be published. Clients will access CRLs at http://[this-url]/certenroll/" `
         -Validation {
-          param($value)
-          if ([string]::IsNullOrWhiteSpace($value)) {
-            return "CRL URL path cannot be empty."
-          }
-          # Simplified FQDN validation - basic pattern matching to avoid PowerShell parsing issues
-          # Allow alphanumeric, hyphens, dots; must start and end with alphanumeric
-          $isValid = $true
-          
-          # Basic checks: length, characters, and structure
-          if ($value.Length -lt 3 -or $value.Length -gt 255) {
-            $isValid = $false
-          }
-          elseif ($value -notmatch '^[a-zA-Z0-9]' -or $value -notmatch '[a-zA-Z0-9]$') {
-            # Must start and end with alphanumeric
-            $isValid = $false
-          }
-          elseif ($value -match '[^a-zA-Z0-9.-]') {
-            # Contains invalid characters (only alphanumeric, dots, hyphens allowed)
-            $isValid = $false
-          }
-          elseif ($value -match '\.\.' -or $value -match '--' -or $value.StartsWith('.') -or $value.StartsWith('-')) {
-            # No consecutive dots, consecutive hyphens, or starting with dot/hyphen
-            $isValid = $false
-          }
-          
-          if (-not $isValid) {
-            return "CRL URL path appears to be invalid. Expected format: pki.mycompany.com or similar FQDN."
-          }
-          return $true
+        param($value)
+        if ([string]::IsNullOrWhiteSpace($value)) {
+          return "CRL URL path cannot be empty."
         }
+        # Simplified FQDN validation - basic pattern matching to avoid PowerShell parsing issues
+        # Allow alphanumeric, hyphens, dots; must start and end with alphanumeric
+        $isValid = $true
+          
+        # Basic checks: length, characters, and structure
+        if ($value.Length -lt 3 -or $value.Length -gt 255) {
+          $isValid = $false
+        }
+        elseif ($value -notmatch '^[a-zA-Z0-9]' -or $value -notmatch '[a-zA-Z0-9]$') {
+          # Must start and end with alphanumeric
+          $isValid = $false
+        }
+        elseif ($value -match '[^a-zA-Z0-9.-]') {
+          # Contains invalid characters (only alphanumeric, dots, hyphens allowed)
+          $isValid = $false
+        }
+        elseif ($value -match '\.\.' -or $value -match '--' -or $value.StartsWith('.') -or $value.StartsWith('-')) {
+          # No consecutive dots, consecutive hyphens, or starting with dot/hyphen
+          $isValid = $false
+        }
+          
+        if (-not $isValid) {
+          return "CRL URL path appears to be invalid. Expected format: pki.mycompany.com or similar FQDN."
+        }
+        return $true
+      }
       
       # Display summary and confirm
       Write-Host ""
@@ -2042,16 +2042,16 @@ try {
         Write-Host "  CRL URL: $httpCRLPath" -ForegroundColor Gray
       }
       else {
-      # Create or update CAPolicy.inf
-      if (Test-CAPolicyExists) {
-        Write-Warning "CAPolicy.inf already exists at $capolicyPath"
-        $overwrite = Read-UserConfirmation `
-          -Message "Do you want to overwrite the existing CAPolicy.inf file with new values?" `
-          -HelpText "The existing file will be replaced with the new configuration."
+        # Create or update CAPolicy.inf
+        if (Test-CAPolicyExists) {
+          Write-Warning "CAPolicy.inf already exists at $capolicyPath"
+          $overwrite = Read-UserConfirmation `
+            -Message "Do you want to overwrite the existing CAPolicy.inf file with new values?" `
+            -HelpText "The existing file will be replaced with the new configuration."
         
-        if (-not $overwrite) {
-          Report-Status "Using existing CAPolicy.inf file" 0 Yellow
-        }
+          if (-not $overwrite) {
+            Report-Status "Using existing CAPolicy.inf file" 0 Yellow
+          }
           else {
             $CAPolicyInf = New-CAPolicyInfContent -OID $OID -httpCRLPath $httpCRLPath -KeyLength $script:KeyLength -CAValidityYears $script:CAValidityYears -CRLPeriodYears $script:CRLPeriodYears
             $CAPolicyInf | Out-File $capolicyPath -Encoding utf8 -Force -ErrorAction Stop
@@ -2410,15 +2410,15 @@ try {
     Report-Status "Configuring CA registry settings" 0 Green
     try {
       $regSettings = @(
-        @{Path = "CA\CRLPeriodUnits"; Value = "$script:CRLPeriodYears"},  # 1-2 years for offline CA
-        @{Path = "CA\CRLPeriod"; Value = "Years"},
-        @{Path = "CA\CRLDeltaPeriodUnits"; Value = "7"},  # Weekly delta CRL
-        @{Path = "CA\CRLDeltaPeriod"; Value = "Days"},
-        @{Path = "CA\CRLOverlapPeriodUnits"; Value = "2"},  # 2-week overlap
-        @{Path = "CA\CRLOverlapPeriod"; Value = "Weeks"},
-        @{Path = "CA\ValidityPeriodUnits"; Value = "$script:CertificateValidityYears"},  # 1-2 years for issued certs
-        @{Path = "CA\ValidityPeriod"; Value = "Years"},
-        @{Path = "CA\AuditFilter"; Value = "127"}  # All audit events (binary: 01111111)
+        @{Path = "CA\CRLPeriodUnits"; Value = "$script:CRLPeriodYears" },  # 1-2 years for offline CA
+        @{Path = "CA\CRLPeriod"; Value = "Years" },
+        @{Path = "CA\CRLDeltaPeriodUnits"; Value = "7" },  # Weekly delta CRL
+        @{Path = "CA\CRLDeltaPeriod"; Value = "Days" },
+        @{Path = "CA\CRLOverlapPeriodUnits"; Value = "2" },  # 2-week overlap
+        @{Path = "CA\CRLOverlapPeriod"; Value = "Weeks" },
+        @{Path = "CA\ValidityPeriodUnits"; Value = "$script:CertificateValidityYears" },  # 1-2 years for issued certs
+        @{Path = "CA\ValidityPeriod"; Value = "Years" },
+        @{Path = "CA\AuditFilter"; Value = "127" }  # All audit events (binary: 01111111)
       )
 
       foreach ($setting in $regSettings) {
