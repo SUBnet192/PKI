@@ -1524,7 +1524,7 @@ Function Backup-CAKeys {
       }
       $pfxSize = (Get-Item $pfxPath).Length
       $pfxSizeKB = [math]::Round($pfxSize / 1024, 2)
-      $pfxSizeMsg = "$pfxPath ($pfxSizeKB KB)"
+      $pfxSizeMsg = $pfxPath + " (" + $pfxSizeKB.ToString() + " KB)"
       Report-Status "CA certificate with private key exported: $pfxSizeMsg" 0 Green
     }
     catch {
@@ -1541,7 +1541,7 @@ Function Backup-CAKeys {
       }
       $cerSize = (Get-Item $cerPath).Length
       $cerSizeKB = [math]::Round($cerSize / 1024, 2)
-      $cerSizeMsg = "$cerPath ($cerSizeKB KB)"
+      $cerSizeMsg = $cerPath + " (" + $cerSizeKB.ToString() + " KB)"
       Report-Status "CA certificate (public key) exported: $cerSizeMsg" 0 Green
     }
     catch {
@@ -1560,7 +1560,7 @@ Function Backup-CAKeys {
         }
         $dbSize = (Get-ChildItem $dbBackupPath -Recurse | Measure-Object -Property Length -Sum).Sum
         $dbSizeKB = [math]::Round($dbSize / 1024, 2)
-        $dbSizeMsg = "$dbBackupPath ($dbSizeKB KB)"
+        $dbSizeMsg = $dbBackupPath + " (" + $dbSizeKB.ToString() + " KB)"
         Report-Status "CA database backed up to: $dbSizeMsg" 0 Green
       }
       catch {
@@ -1590,8 +1590,8 @@ Backup Files:
 - Database: CADatabase-$timestamp
 
 File Verification:
-$(if (Test-Path $pfxPath) { $pfxManifestSize = (Get-Item $pfxPath).Length; $pfxManifestSizeKB = [math]::Round($pfxManifestSize / 1024, 2); $pfxManifestMsg = "$pfxManifestSizeKB KB"; "- PFX file exists: YES ($pfxManifestMsg)" } else { "- PFX file exists: NO" })
-$(if (Test-Path $cerPath) { $cerManifestSize = (Get-Item $cerPath).Length; $cerManifestSizeKB = [math]::Round($cerManifestSize / 1024, 2); $cerManifestMsg = "$cerManifestSizeKB KB"; "- CER file exists: YES ($cerManifestMsg)" } else { "- CER file exists: NO" })
+$(if (Test-Path $pfxPath) { $pfxManifestSize = (Get-Item $pfxPath).Length; $pfxManifestSizeKB = [math]::Round($pfxManifestSize / 1024, 2); $pfxManifestMsg = $pfxManifestSizeKB.ToString() + " KB"; "- PFX file exists: YES (" + $pfxManifestMsg + ")" } else { "- PFX file exists: NO" })
+$(if (Test-Path $cerPath) { $cerManifestSize = (Get-Item $cerPath).Length; $cerManifestSizeKB = [math]::Round($cerManifestSize / 1024, 2); $cerManifestMsg = $cerManifestSizeKB.ToString() + " KB"; "- CER file exists: YES (" + $cerManifestMsg + ")" } else { "- CER file exists: NO" })
 $(if (Test-Path (Join-Path $BackupPath "CADatabase-$timestamp")) { "- Database backup exists: YES" } else { "- Database backup exists: NO" })
 
 IMPORTANT SECURITY NOTES:
