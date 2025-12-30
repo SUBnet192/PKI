@@ -26,10 +26,10 @@
   None
   
 .NOTES
-  Version:        3.0
+  Version:        3.5
   Author:         Marc Bouchard
   Creation Date:  2021/03/04
-  Last Modified:  2024/12/19
+  Last Modified:  2025/12/30
   
   Compatibility:
   - Windows Server 2012, 2012 R2, 2016, 2019, 2022, 2025
@@ -1843,7 +1843,7 @@ try {
               if ($value.Length -gt 64) {
                 return "CA Common Name cannot exceed 64 characters. Current length: $($value.Length)"
               }
-              if ($value -notmatch '^[a-zA-Z0-9\-_\.\s]+$') {
+              if ($value -notmatch '^[a-zA-Z0-9_\.\s-]+$') {
                 return "CA Common Name contains invalid characters. Only alphanumeric, hyphens, underscores, dots, and spaces are allowed."
               }
               return $true
@@ -1864,7 +1864,7 @@ try {
             if ($value.Length -gt 64) {
               return "CA Common Name cannot exceed 64 characters. Current length: $($value.Length)"
             }
-            if ($value -notmatch '^[a-zA-Z0-9\-_\.\s]+$') {
+            if ($value -notmatch '^[a-zA-Z0-9_\.\s-]+$') {
               return "CA Common Name contains invalid characters. Only alphanumeric, hyphens, underscores, dots, and spaces are allowed."
             }
             return $true
