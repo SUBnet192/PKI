@@ -530,6 +530,148 @@ Function Test-CAPolicyExists {
 }
 
 #-----------------------------------------------------------------------------------------------------------
+# Function: Test-PostRebootScenario
+#-----------------------------------------------------------------------------------------------------------
+<#
+.SYNOPSIS
+  Detects if script is being run after a reboot (post-reboot scenario)
+  
+.DESCRIPTION
+  Returns $true if:
+  - CAPolicy.inf exists (configuration was started)
+  - ADCS feature is installed (reboot completed feature installation)
+  - CA is NOT fully installed yet (installation was interrupted)
+  
+  This indicates the script should skip the disclaimer and resume installation.
+#>
+Function Test-PostRebootScenario {
+  try {
+    # Check if CAPolicy.inf exists (indicates previous execution)
+    if (-not (Test-CAPolicyExists)) {
+      return $false
+    }
+    
+    # Check if ADCS feature is installed (indicates post-reboot)
+    try {
+      if (-not (Get-Module -ListAvailable -Name ServerManager -ErrorAction SilentlyContinue)) {
+        return $false
+      }
+      
+      if (-not (Get-Module -Name ServerManager -ErrorAction SilentlyContinue)) {
+        Import-Module ServerManager -ErrorAction SilentlyContinue | Out-Null
+      }
+      
+      $feature = Get-WindowsFeature -Name ADCS-Cert-Authority -ErrorAction SilentlyContinue
+      if ($feature -and $feature.InstallState -eq 'Installed') {
+        # Feature is installed, check if CA is fully configured
+        if (-not (Test-CAInstalled)) {
+          # CAPolicy.inf exists, feature installed, but CA not configured = post-reboot scenario
+          return $true
+        }
+      }
+    }
+    catch {
+      # If we can't check, assume not post-reboot
+      return $false
+    }
+    
+    return $false
+  }
+  catch {
+    return $false
+  }
+}
+
+#-----------------------------------------------------------------------------------------------------------
+# Function: Test-CAPolicyInfComplete
+#-----------------------------------------------------------------------------------------------------------
+<#
+.SYNOPSIS
+  Validates that CAPolicy.inf file is complete and properly formatted
+  
+.DESCRIPTION
+  Checks that CAPolicy.inf contains all required sections and values:
+  - [Version] section
+  - [PolicyStatementExtension] section
+  - [InternalPolicy] section with OID and URL
+  - [Certsrv_Server] section with required settings
+  
+  Returns $true if file is complete, $false otherwise.
+#>
+Function Test-CAPolicyInfComplete {
+  param(
+    [Parameter(Mandatory=$true)]
+    [string]$Path
+  )
+  
+  try {
+    if (-not (Test-Path $Path)) {
+      return $false
+    }
+    
+    $content = Get-Content $Path -Raw
+    
+    # Check for required sections
+    $requiredSections = @(
+      '\[Version\]',
+      '\[PolicyStatementExtension\]',
+      '\[InternalPolicy\]',
+      '\[Certsrv_Server\]'
+    )
+    
+    foreach ($section in $requiredSections) {
+      if ($content -notmatch $section) {
+        Write-Verbose "CAPolicy.inf missing required section: $section"
+        return $false
+      }
+    }
+    
+    # Check for required values in [InternalPolicy]
+    if ($content -notmatch 'OID\s*=\s*1\.3\.6\.1\.4\.1\.\d{5}') {
+      Write-Verbose "CAPolicy.inf missing or invalid OID"
+      return $false
+    }
+    
+    if ($content -notmatch 'URL=http://[^\s]+') {
+      Write-Verbose "CAPolicy.inf missing or invalid URL"
+      return $false
+    }
+    
+    # Check for required values in [Certsrv_Server]
+    if ($content -notmatch 'RenewalKeyLength=\d+') {
+      Write-Verbose "CAPolicy.inf missing RenewalKeyLength"
+      return $false
+    }
+    
+    if ($content -notmatch 'RenewalValidityPeriod=Years') {
+      Write-Verbose "CAPolicy.inf missing RenewalValidityPeriod"
+      return $false
+    }
+    
+    if ($content -notmatch 'RenewalValidityPeriodUnits=\d+') {
+      Write-Verbose "CAPolicy.inf missing RenewalValidityPeriodUnits"
+      return $false
+    }
+    
+    if ($content -notmatch 'CRLPeriod=Years') {
+      Write-Verbose "CAPolicy.inf missing CRLPeriod"
+      return $false
+    }
+    
+    if ($content -notmatch 'CRLPeriodUnits=\d+') {
+      Write-Verbose "CAPolicy.inf missing CRLPeriodUnits"
+      return $false
+    }
+    
+    return $true
+  }
+  catch {
+    Write-Verbose "Error validating CAPolicy.inf: $_"
+    return $false
+  }
+}
+
+#-----------------------------------------------------------------------------------------------------------
 # Function: Read-CAPolicyInf
 #-----------------------------------------------------------------------------------------------------------
 <#
@@ -1205,8 +1347,40 @@ try {
   #-----------------------------------------------------------------------------------------------------------
   # Phase 1: Initialization and Prerequisites
   #-----------------------------------------------------------------------------------------------------------
-  Show-Disclaimer
-  Clear-Host
+  # Detect post-reboot scenario (skip disclaimer if resuming after reboot)
+  $isPostReboot = Test-PostRebootScenario
+  $capolicyPath = Join-Path $env:SystemRoot "CAPolicy.inf"
+  
+  if ($isPostReboot) {
+    # Post-reboot scenario: Skip disclaimer, validate INF file, and resume
+    Clear-Host
+    Write-Host "========================================" -ForegroundColor Cyan
+    Write-Host "RESUMING ROOT CA INSTALLATION" -ForegroundColor Cyan
+    Write-Host "========================================" -ForegroundColor Cyan
+    Write-Host ""
+    Report-Status "Detected post-reboot scenario. Resuming installation..." 0 Cyan
+    Write-Host ""
+    
+    # Validate CAPolicy.inf is complete
+    if (Test-CAPolicyInfComplete -Path $capolicyPath) {
+      Report-Status "CAPolicy.inf file validated: Complete and properly formatted" 0 Green
+      Write-Host "  File: $capolicyPath" -ForegroundColor Gray
+    }
+    else {
+      Write-Error "CAPolicy.inf file exists but is incomplete or corrupted."
+      Write-Error "File location: $capolicyPath"
+      Write-Error ""
+      Write-Error "Please review the file and fix any issues, or delete it to start fresh."
+      throw "CAPolicy.inf validation failed. Cannot resume installation."
+    }
+    Write-Host ""
+  }
+  else {
+    # First run: Show disclaimer
+    Show-Disclaimer
+    Clear-Host
+  }
+  
   Report-Status "Building Root CA" 0 Green
   
   # Configuration import/export removed for single-use script simplicity
@@ -1428,53 +1602,68 @@ try {
   # Must be created BEFORE installing the CA role
   $Script:CurrentPhase = 3
   Write-Progress -Activity $Script:ProgressActivity -Status $Script:ProgressPhases[$Script:CurrentPhase] -PercentComplete (($Script:CurrentPhase / $Script:ProgressPhases.Count) * 100)
-  Report-Status "Create CAPolicy file" 0 Green
-  try {
-    # Idempotency: Use existing file if it exists and was successfully parsed
+  
+  # In post-reboot scenario, INF file is already validated - skip creation/editing
+  if ($isPostReboot -and (Test-CAPolicyInfComplete -Path $capolicyPath)) {
+    Report-Status "Using existing CAPolicy.inf file (validated in post-reboot check)" 0 Green
+    Write-Host "  File: $capolicyPath" -ForegroundColor Gray
     if ($existingCAPolicy) {
-      Report-Status "Using existing CAPolicy.inf file (already configured)" 0 Green
-      Write-Host "  File: $capolicyPath" -ForegroundColor Gray
       Write-Host "  OID: $OID" -ForegroundColor Gray
       Write-Host "  CRL URL: $httpCRLPath" -ForegroundColor Gray
     }
-    else {
-      # Create or update CAPolicy.inf
-      if (Test-CAPolicyExists) {
-        Write-Warning "CAPolicy.inf already exists at $capolicyPath"
-        $response = Read-Host "Do you want to overwrite it with new values? [y/n]"
-        if ($response -ne 'y') {
-          Report-Status "Using existing CAPolicy.inf file" 0 Yellow
+    # Skip file display and editing prompts in post-reboot scenario
+  }
+  else {
+    Report-Status "Create CAPolicy file" 0 Green
+    try {
+      # Idempotency: Use existing file if it exists and was successfully parsed
+      if ($existingCAPolicy) {
+        Report-Status "Using existing CAPolicy.inf file (already configured)" 0 Green
+        Write-Host "  File: $capolicyPath" -ForegroundColor Gray
+        Write-Host "  OID: $OID" -ForegroundColor Gray
+        Write-Host "  CRL URL: $httpCRLPath" -ForegroundColor Gray
+      }
+      else {
+        # Create or update CAPolicy.inf
+        if (Test-CAPolicyExists) {
+          Write-Warning "CAPolicy.inf already exists at $capolicyPath"
+          $response = Read-Host "Do you want to overwrite it with new values? [y/n]"
+          if ($response -ne 'y') {
+            Report-Status "Using existing CAPolicy.inf file" 0 Yellow
+          }
+          else {
+            $CAPolicyInf = New-CAPolicyInfContent -OID $OID -httpCRLPath $httpCRLPath -KeyLength $script:KeyLength -CAValidityYears $script:CAValidityYears -CRLPeriodYears $script:CRLPeriodYears
+            $CAPolicyInf | Out-File $capolicyPath -Encoding utf8 -Force -ErrorAction Stop
+            Report-Status "CAPolicy.inf updated successfully" 0 Green
+          }
         }
         else {
           $CAPolicyInf = New-CAPolicyInfContent -OID $OID -httpCRLPath $httpCRLPath -KeyLength $script:KeyLength -CAValidityYears $script:CAValidityYears -CRLPeriodYears $script:CRLPeriodYears
           $CAPolicyInf | Out-File $capolicyPath -Encoding utf8 -Force -ErrorAction Stop
-          Report-Status "CAPolicy.inf updated successfully" 0 Green
+          Report-Status "CAPolicy.inf created successfully" 0 Green
         }
       }
-      else {
-        $CAPolicyInf = New-CAPolicyInfContent -OID $OID -httpCRLPath $httpCRLPath -KeyLength $script:KeyLength -CAValidityYears $script:CAValidityYears -CRLPeriodYears $script:CRLPeriodYears
-        $CAPolicyInf | Out-File $capolicyPath -Encoding utf8 -Force -ErrorAction Stop
-        Report-Status "CAPolicy.inf created successfully" 0 Green
-      }
-    }
 
-    # Display file and allow editing
-    Get-Content $capolicyPath
-    Report-Status "Would you like to edit CAPolicy.Inf? [y/n]" 1 Yellow
-    $response = Read-Host
-    If ($response -eq "y") {
-      try {
-        Start-Process -Wait -FilePath "notepad.exe" -ArgumentList $capolicyPath -ErrorAction Stop
-      }
-      catch {
-        Write-Warning "Could not open notepad. Please edit $capolicyPath manually."
+      # Display file and allow editing (skip in post-reboot scenario)
+      if (-not $isPostReboot) {
+        Get-Content $capolicyPath
+        Report-Status "Would you like to edit CAPolicy.Inf? [y/n]" 1 Yellow
+        $response = Read-Host
+        If ($response -eq "y") {
+          try {
+            Start-Process -Wait -FilePath "notepad.exe" -ArgumentList $capolicyPath -ErrorAction Stop
+          }
+          catch {
+            Write-Warning "Could not open notepad. Please edit $capolicyPath manually."
+          }
+        }
+        $response = $null
       }
     }
-    $response = $null
-  }
-  catch {
-    Write-Error "Failed to create CAPolicy.inf: $_"
-    throw
+    catch {
+      Write-Error "Failed to create CAPolicy.inf: $_"
+      throw
+    }
   }
 
   #-----------------------------------------------------------------------------------------------------------
