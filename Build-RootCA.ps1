@@ -628,8 +628,16 @@ Function Test-InputValidation {
   if ([string]::IsNullOrWhiteSpace($httpCRLPath)) {
     $errors += "CRL URL path cannot be empty."
   }
-  elseif ($httpCRLPath -notmatch "^([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$|^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$") {
-    $errors += "CRL URL path appears to be invalid. Expected format: pki.mycompany.com or similar FQDN."
+  else {
+    # Simplified FQDN validation pattern
+    # Pattern 1: FQDN with multiple labels (e.g., pki.company.com)
+    $fqdnMultiPattern = '^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9](\.[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9])+\.[a-zA-Z]{2,}$'
+    # Pattern 2: Single label (e.g., pki)
+    $fqdnSinglePattern = '^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]$'
+    
+    if ($httpCRLPath -notmatch $fqdnMultiPattern -and $httpCRLPath -notmatch $fqdnSinglePattern) {
+      $errors += "CRL URL path appears to be invalid. Expected format: pki.mycompany.com or similar FQDN."
+    }
   }
   
   if ($errors.Count -gt 0) {
@@ -1933,7 +1941,13 @@ try {
           if ([string]::IsNullOrWhiteSpace($value)) {
             return "CRL URL path cannot be empty."
           }
-          if ($value -notmatch "^([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$|^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$") {
+          # Simplified FQDN validation pattern
+          # Pattern 1: FQDN with multiple labels (e.g., pki.company.com)
+          $fqdnMultiPattern = '^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9](\.[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9])+\.[a-zA-Z]{2,}$'
+          # Pattern 2: Single label (e.g., pki)
+          $fqdnSinglePattern = '^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]$'
+          
+          if ($value -notmatch $fqdnMultiPattern -and $value -notmatch $fqdnSinglePattern) {
             return "CRL URL path appears to be invalid. Expected format: pki.mycompany.com or similar FQDN."
           }
           return $true
