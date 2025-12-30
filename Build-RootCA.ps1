@@ -1006,31 +1006,116 @@ Function Backup-CAKeys {
     [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR2)
     Remove-Variable plainPassword1, plainPassword2 -ErrorAction SilentlyContinue
     
-    # Find CA certificate
+    # Find CA certificate - try multiple methods to locate it
+    Write-Verbose "Searching for CA certificate with name: $caName"
+    $caCert = $null
+    
+    # Method 1: Search by CA name in Subject
     $caCert = Get-ChildItem Cert:\LocalMachine\My | Where-Object { 
       $_.Subject -like "*CN=$caName*" -or $_.Subject -like "*$caName*"
     } | Select-Object -First 1
     
+    # Method 2: If not found, try to get certificate from CA configuration
     if (-not $caCert) {
-      throw "Could not find CA certificate in certificate store"
+      Write-Verbose "Certificate not found by name, trying to get from CA configuration..."
+      try {
+        $caCertThumbprint = (Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\CertSvc\Configuration\$caName" -Name "CACertHash" -ErrorAction SilentlyContinue).CACertHash
+        if ($caCertThumbprint) {
+          $caCert = Get-ChildItem Cert:\LocalMachine\My | Where-Object { $_.Thumbprint -eq $caCertThumbprint } | Select-Object -First 1
+        }
+      }
+      catch {
+        Write-Verbose "Could not get certificate from registry: $_"
+      }
+    }
+    
+    # Method 3: Get the most recent certificate in the My store (should be the CA cert if only one)
+    if (-not $caCert) {
+      Write-Verbose "Trying to get most recent certificate from My store..."
+      $allCerts = Get-ChildItem Cert:\LocalMachine\My | Sort-Object NotBefore -Descending
+      if ($allCerts.Count -eq 1) {
+        $caCert = $allCerts[0]
+        Write-Verbose "Using only certificate found in My store: $($caCert.Subject)"
+      }
+      elseif ($allCerts.Count -gt 1) {
+        Write-Warning "Multiple certificates found in My store. Attempting to identify CA certificate..."
+        # Try to find certificate that has CA extensions
+        foreach ($cert in $allCerts) {
+          $extensions = $cert.Extensions | Where-Object { $_.Oid.FriendlyName -like "*CA*" -or $_.Oid.Value -eq "2.5.29.19" }
+          if ($extensions) {
+            $caCert = $cert
+            Write-Verbose "Found CA certificate by extension: $($caCert.Subject)"
+            break
+          }
+        }
+      }
+    }
+    
+    if (-not $caCert) {
+      Write-Error "Available certificates in LocalMachine\My store:"
+      Get-ChildItem Cert:\LocalMachine\My | ForEach-Object {
+        Write-Error "  Subject: $($_.Subject), Thumbprint: $($_.Thumbprint)"
+      }
+      throw "Could not find CA certificate in certificate store. CA Name: $caName"
+    }
+    
+    Write-Verbose "Found CA certificate: $($caCert.Subject), Thumbprint: $($caCert.Thumbprint)"
+    
+    # Verify certificate has private key
+    if (-not $caCert.HasPrivateKey) {
+      throw "CA certificate found but does not have a private key. Cannot export PFX file."
     }
     
     # Export CA certificate with private key (PFX)
     $pfxPath = Join-Path $BackupPath "RootCA-$caName-$timestamp.pfx"
-    Export-PfxCertificate -Cert $caCert -FilePath $pfxPath -Password $backupPassword -ErrorAction Stop
-    Report-Status "CA certificate with private key exported: $pfxPath" 0 Green
+    try {
+      Export-PfxCertificate -Cert $caCert -FilePath $pfxPath -Password $backupPassword -ErrorAction Stop
+      if (-not (Test-Path $pfxPath)) {
+        throw "PFX file was not created at $pfxPath"
+      }
+      $pfxSize = (Get-Item $pfxPath).Length
+      Report-Status "CA certificate with private key exported: $pfxPath ($([math]::Round($pfxSize/1KB, 2)) KB)" 0 Green
+    }
+    catch {
+      Write-Error "Failed to export PFX certificate: $_"
+      throw
+    }
     
     # Export CA certificate without private key (CER)
     $cerPath = Join-Path $BackupPath "RootCA-$caName-$timestamp.cer"
-    Export-Certificate -Cert $caCert -FilePath $cerPath -Type CERT -ErrorAction Stop
-    Report-Status "CA certificate (public key) exported: $cerPath" 0 Green
+    try {
+      Export-Certificate -Cert $caCert -FilePath $cerPath -Type CERT -ErrorAction Stop
+      if (-not (Test-Path $cerPath)) {
+        throw "CER file was not created at $cerPath"
+      }
+      $cerSize = (Get-Item $cerPath).Length
+      Report-Status "CA certificate (public key) exported: $cerPath ($([math]::Round($cerSize/1KB, 2)) KB)" 0 Green
+    }
+    catch {
+      Write-Error "Failed to export CER certificate: $_"
+      throw
+    }
     
     # Backup CA database
     $dbPath = Join-Path $env:SystemRoot "System32\CertLog"
     if (Test-Path $dbPath) {
-      $dbBackupPath = Join-Path $BackupPath "CADatabase-$timestamp"
-      Copy-Item -Path $dbPath -Destination $dbBackupPath -Recurse -Force -ErrorAction Stop
-      Report-Status "CA database backed up to: $dbBackupPath" 0 Green
+      try {
+        $dbBackupPath = Join-Path $BackupPath "CADatabase-$timestamp"
+        Copy-Item -Path $dbPath -Destination $dbBackupPath -Recurse -Force -ErrorAction Stop
+        if (-not (Test-Path $dbBackupPath)) {
+          throw "Database backup directory was not created at $dbBackupPath"
+        }
+        $dbSize = (Get-ChildItem $dbBackupPath -Recurse | Measure-Object -Property Length -Sum).Sum
+        Report-Status "CA database backed up to: $dbBackupPath ($([math]::Round($dbSize/1KB, 2)) KB)" 0 Green
+      }
+      catch {
+        Write-Warning "Failed to backup CA database: $_"
+        Write-Warning "Continuing with certificate backup only..."
+      }
+    }
+    else {
+      Write-Warning "CA database path not found: $dbPath"
+      Write-Warning "Database backup skipped. This may be normal if CA was just installed."
     }
     
     # Create backup manifest
@@ -1041,11 +1126,18 @@ Root CA Backup Manifest
 Backup Date: $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")
 CA Name: $caName
 CA Type: $($caConfig.CAType)
+Certificate Subject: $($caCert.Subject)
+Certificate Thumbprint: $($caCert.Thumbprint)
 
 Backup Files:
 - PFX (Certificate + Private Key): RootCA-$caName-$timestamp.pfx
 - CER (Certificate Only): RootCA-$caName-$timestamp.cer
 - Database: CADatabase-$timestamp
+
+File Verification:
+$(if (Test-Path $pfxPath) { "- PFX file exists: YES ($([math]::Round((Get-Item $pfxPath).Length/1KB, 2)) KB)" } else { "- PFX file exists: NO" })
+$(if (Test-Path $cerPath) { "- CER file exists: YES ($([math]::Round((Get-Item $cerPath).Length/1KB, 2)) KB)" } else { "- CER file exists: NO" })
+$(if (Test-Path (Join-Path $BackupPath "CADatabase-$timestamp")) { "- Database backup exists: YES" } else { "- Database backup exists: NO" })
 
 IMPORTANT SECURITY NOTES:
 - Store backups in secure, offline location
@@ -1055,8 +1147,35 @@ IMPORTANT SECURITY NOTES:
 - Test restore procedures regularly
 
 "@
-    $manifest | Out-File $manifestPath -Encoding UTF8
-    Report-Status "Backup manifest created: $manifestPath" 0 Green
+    try {
+      $manifest | Out-File $manifestPath -Encoding UTF8 -ErrorAction Stop
+      if (-not (Test-Path $manifestPath)) {
+        throw "Manifest file was not created"
+      }
+      Report-Status "Backup manifest created: $manifestPath" 0 Green
+    }
+    catch {
+      Write-Warning "Failed to create backup manifest: $_"
+    }
+    
+    # Verify all backup files exist
+    Write-Host ""
+    Report-Status "Verifying backup files..." 0 Cyan
+    $allFilesExist = $true
+    if (-not (Test-Path $pfxPath)) {
+      Write-Error "PFX file missing: $pfxPath"
+      $allFilesExist = $false
+    }
+    if (-not (Test-Path $cerPath)) {
+      Write-Error "CER file missing: $cerPath"
+      $allFilesExist = $false
+    }
+    
+    if (-not $allFilesExist) {
+      throw "Backup verification failed. Some files were not created."
+    }
+    
+    Report-Status "All backup files verified successfully" 0 Green
     
     Write-Host ""
     Write-Host "========================================" -ForegroundColor Green
