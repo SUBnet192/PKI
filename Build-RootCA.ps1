@@ -629,14 +629,20 @@ Function Test-InputValidation {
     $errors += "CRL URL path cannot be empty."
   }
   else {
-    # Simplified FQDN validation pattern
-    # Pattern 1: FQDN with multiple labels (e.g., pki.company.com)
-    $fqdnMultiPattern = '^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9](\.[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9])+\.[a-zA-Z]{2,}$'
-    # Pattern 2: Single label (e.g., pki)
-    $fqdnSinglePattern = '^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]$'
-    
-    if ($httpCRLPath -notmatch $fqdnMultiPattern -and $httpCRLPath -notmatch $fqdnSinglePattern) {
-      $errors += "CRL URL path appears to be invalid. Expected format: pki.mycompany.com or similar FQDN."
+    # Simplified FQDN validation - use regex object to avoid parsing issues
+    try {
+      $fqdnMultiRegex = [regex]'^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9](\.[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9])+\.[a-zA-Z]{2,}$'
+      $fqdnSingleRegex = [regex]'^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]$'
+      
+      if (-not ($fqdnMultiRegex.IsMatch($httpCRLPath) -or $fqdnSingleRegex.IsMatch($httpCRLPath))) {
+        $errors += "CRL URL path appears to be invalid. Expected format: pki.mycompany.com or similar FQDN."
+      }
+    }
+    catch {
+      # Fallback to simple validation if regex fails
+      if ($httpCRLPath -notmatch '^[a-zA-Z0-9.-]+$' -or $httpCRLPath.Length -lt 3) {
+        $errors += "CRL URL path appears to be invalid. Expected format: pki.mycompany.com or similar FQDN."
+      }
     }
   }
   
@@ -1508,7 +1514,8 @@ Function Backup-CAKeys {
         throw "PFX file was not created at $pfxPath"
       }
       $pfxSize = (Get-Item $pfxPath).Length
-      Report-Status "CA certificate with private key exported: $pfxPath ($([math]::Round($pfxSize/1KB, 2)) KB)" 0 Green
+      $pfxSizeKB = [math]::Round($pfxSize / 1024, 2)
+      Report-Status "CA certificate with private key exported: $pfxPath ($pfxSizeKB KB)" 0 Green
     }
     catch {
       Write-Error "Failed to export PFX certificate: $_"
