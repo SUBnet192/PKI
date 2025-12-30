@@ -262,6 +262,194 @@ Function Report-Status {
 }
 
 #-----------------------------------------------------------------------------------------------------------
+# Function: Read-UserInput
+#-----------------------------------------------------------------------------------------------------------
+<#
+.SYNOPSIS
+  Enhanced user input prompt with better formatting and validation feedback
+  
+.DESCRIPTION
+  Provides a user-friendly input prompt with:
+  - Clear visual separation
+  - Example values
+  - Validation feedback
+  - Help text
+  - Better formatting
+#>
+Function Read-UserInput {
+  param(
+    [Parameter(Mandatory=$true)]
+    [string]$Prompt,
+    
+    [Parameter(Mandatory=$false)]
+    [string]$Example = $null,
+    
+    [Parameter(Mandatory=$false)]
+    [string]$HelpText = $null,
+    
+    [Parameter(Mandatory=$false)]
+    [scriptblock]$Validation = $null,
+    
+    [Parameter(Mandatory=$false)]
+    [string]$DefaultValue = $null
+  )
+  
+  $inputValue = $null
+  $isValid = $false
+  
+  do {
+    Write-Host ""
+    Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor DarkGray
+    Write-Host "INPUT REQUIRED" -ForegroundColor Cyan
+    Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor DarkGray
+    Write-Host ""
+    Write-Host $Prompt -ForegroundColor Yellow
+    Write-Host ""
+    
+    if ($Example) {
+      Write-Host "  Example: " -NoNewline -ForegroundColor Gray
+      Write-Host $Example -ForegroundColor White
+      Write-Host ""
+    }
+    
+    if ($HelpText) {
+      Write-Host "  ℹ " -NoNewline -ForegroundColor Cyan
+      Write-Host $HelpText -ForegroundColor Gray
+      Write-Host ""
+    }
+    
+    if ($DefaultValue) {
+      Write-Host "  Default: " -NoNewline -ForegroundColor Gray
+      Write-Host $DefaultValue -ForegroundColor White
+      Write-Host "  (Press Enter to use default)" -ForegroundColor DarkGray
+      Write-Host ""
+    }
+    
+    Write-Host "> " -NoNewline -ForegroundColor Green
+    $inputValue = Read-Host
+    
+    # Use default if provided and input is empty
+    if ([string]::IsNullOrWhiteSpace($inputValue) -and $DefaultValue) {
+      $inputValue = $DefaultValue
+      Write-Host "  Using default value: $DefaultValue" -ForegroundColor Gray
+    }
+    
+    $inputValue = $inputValue.Trim()
+    
+    # Validate if validation scriptblock provided
+    if ($Validation) {
+      try {
+        $validationResult = & $Validation $inputValue
+        if ($validationResult -is [bool] -and $validationResult) {
+          $isValid = $true
+        }
+        elseif ($validationResult -is [string]) {
+          # Validation returned error message
+          Write-Host ""
+          Write-Host "  ✗ " -NoNewline -ForegroundColor Red
+          Write-Host $validationResult -ForegroundColor Yellow
+          Write-Host ""
+        }
+        else {
+          $isValid = $true
+        }
+      }
+      catch {
+        Write-Host ""
+        Write-Host "  ✗ " -NoNewline -ForegroundColor Red
+        Write-Host $_.Exception.Message -ForegroundColor Yellow
+        Write-Host ""
+      }
+    }
+    else {
+      # No validation, accept any non-empty input
+      if (-not [string]::IsNullOrWhiteSpace($inputValue)) {
+        $isValid = $true
+      }
+      else {
+        Write-Host ""
+        Write-Host "  ✗ " -NoNewline -ForegroundColor Red
+        Write-Host "Input cannot be empty. Please provide a value." -ForegroundColor Yellow
+        Write-Host ""
+      }
+    }
+    
+    if ($isValid) {
+      Write-Host ""
+      Write-Host "  ✓ " -NoNewline -ForegroundColor Green
+      Write-Host "Accepted: " -NoNewline -ForegroundColor Gray
+      Write-Host $inputValue -ForegroundColor White
+      Write-Host ""
+    }
+    
+  } while (-not $isValid)
+  
+  return $inputValue
+}
+
+#-----------------------------------------------------------------------------------------------------------
+# Function: Read-UserConfirmation
+#-----------------------------------------------------------------------------------------------------------
+<#
+.SYNOPSIS
+  Enhanced confirmation prompt with better formatting
+  
+.DESCRIPTION
+  Provides a user-friendly yes/no confirmation prompt with clear formatting
+#>
+Function Read-UserConfirmation {
+  param(
+    [Parameter(Mandatory=$true)]
+    [string]$Message,
+    
+    [Parameter(Mandatory=$false)]
+    [string]$HelpText = $null,
+    
+    [Parameter(Mandatory=$false)]
+    [bool]$DefaultYes = $false
+  )
+  
+  $defaultText = if ($DefaultYes) { "[Y/n]" } else { "[y/N]" }
+  $response = $null
+  
+  Write-Host ""
+  Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor DarkGray
+  Write-Host "CONFIRMATION REQUIRED" -ForegroundColor Cyan
+  Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor DarkGray
+  Write-Host ""
+  Write-Host $Message -ForegroundColor Yellow
+  Write-Host ""
+  
+  if ($HelpText) {
+    Write-Host "  ℹ " -NoNewline -ForegroundColor Cyan
+    Write-Host $HelpText -ForegroundColor Gray
+    Write-Host ""
+  }
+  
+  do {
+    Write-Host "  Continue? $defaultText " -NoNewline -ForegroundColor Cyan
+    $response = Read-Host
+    
+    if ([string]::IsNullOrWhiteSpace($response) -and $DefaultYes) {
+      $response = 'y'
+    }
+    elseif ([string]::IsNullOrWhiteSpace($response)) {
+      $response = 'n'
+    }
+    
+    $response = $response.ToLower().Trim()
+    
+    if ($response -notin @('y', 'yes', 'n', 'no')) {
+      Write-Host "  Please enter 'y' for yes or 'n' for no" -ForegroundColor Yellow
+    }
+  } while ($response -notin @('y', 'yes', 'n', 'no'))
+  
+  Write-Host ""
+  
+  return ($response -in @('y', 'yes'))
+}
+
+#-----------------------------------------------------------------------------------------------------------
 # Function: Test-Prerequisites
 #-----------------------------------------------------------------------------------------------------------
 <#
@@ -343,8 +531,10 @@ Function Test-Prerequisites {
           Write-Warning "Certificate Authority is already installed and configured."
           Write-Warning "CA Name: $($caConfig.Name)"
           Write-Warning "CA Type: $($caConfig.CAType)"
-          $response = Read-Host "Do you want to continue anyway? This may cause conflicts. [y/n]"
-          if ($response -ne 'y') {
+          $continue = Read-UserConfirmation `
+            -Message "Do you want to continue anyway? This may cause conflicts." `
+            -HelpText "Continuing may overwrite or conflict with existing CA configuration."
+          if (-not $continue) {
             throw "Script execution cancelled by user."
           }
         }
@@ -383,10 +573,10 @@ Function Test-Prerequisites {
       throw "ADCS-Cert-Authority feature is not available on this system. Ensure you are running Windows Server 2012 or later."
     }
     
-    # Verify ADCS PowerShell module will be available after feature installation
-    # This module is installed with ADCS-Cert-Authority feature
+    # Verify ADCS PowerShell modules will be available after feature installation
+    # ADCSDeployment and ADCSAdministration modules are installed with ADCS-Cert-Authority feature
     Report-Status "Required Windows features available: OK" 0 Green
-    Report-Status "ADCS PowerShell module will be available after feature installation" 0 Green
+    Report-Status "ADCS PowerShell modules (ADCSDeployment, ADCSAdministration) will be available after feature installation" 0 Green
   }
   catch {
     Write-Error "Prerequisite check failed: $_"
@@ -455,33 +645,96 @@ Function Test-InputValidation {
 #-----------------------------------------------------------------------------------------------------------
 <#
 .SYNOPSIS
-  Safely imports the ADCSDeployment module if available
+  Safely imports ADCS PowerShell modules if available with retry logic
   
 .DESCRIPTION
-  Attempts to import the ADCSDeployment module which contains ADCS cmdlets.
-  Returns $true if module is available and imported, $false otherwise.
-  This is safe to call even if the module isn't available yet (e.g., before feature installation).
+  Attempts to import both ADCSDeployment and ADCSAdministration modules which contain ADCS cmdlets.
+  - ADCSDeployment: Contains Install-AdcsCertificationAuthority, Get-CertificationAuthority
+  - ADCSAdministration: Contains Get-CACrlDistributionPoint, Add-CACRLDistributionPoint, Get-CAAuthorityInformationAccess, etc.
+  
+  Includes retry logic for post-reboot scenarios where modules may not be immediately available.
+  Returns $true if both modules are available and imported, $false otherwise.
+  This is safe to call even if the modules aren't available yet (e.g., before feature installation).
 #>
 Function Import-ADCSModule {
+  param(
+    [Parameter(Mandatory=$false)]
+    [int]$MaxRetries = 5,
+    
+    [Parameter(Mandatory=$false)]
+    [int]$RetryDelaySeconds = 3
+  )
+  
   try {
-    # Check if module is available
-    if (-not (Get-Module -ListAvailable -Name ADCSDeployment -ErrorAction SilentlyContinue)) {
-      return $false
+    $retryCount = 0
+    $requiredModules = @('ADCSDeployment', 'ADCSAdministration')
+    
+    while ($retryCount -lt $MaxRetries) {
+      # Refresh module list (important after reboot)
+      if ($retryCount -gt 0) {
+        Write-Verbose "Refreshing module list (attempt $($retryCount + 1)/$MaxRetries)..."
+        # Force refresh by clearing module cache
+        Get-Module -ListAvailable -Refresh -ErrorAction SilentlyContinue | Out-Null
+        Start-Sleep -Seconds $RetryDelaySeconds
+      }
+      
+      $allModulesAvailable = $true
+      $importedModules = @()
+      
+      # Check and import each required module
+      foreach ($moduleName in $requiredModules) {
+        $moduleAvailable = Get-Module -ListAvailable -Name $moduleName -ErrorAction SilentlyContinue
+        if ($moduleAvailable) {
+          Write-Verbose "$moduleName module found in module list"
+          
+          # Import if not already loaded
+          if (-not (Get-Module -Name $moduleName -ErrorAction SilentlyContinue)) {
+            Write-Verbose "Importing $moduleName module..."
+            Import-Module $moduleName -ErrorAction Stop
+          }
+          else {
+            Write-Verbose "$moduleName module already loaded"
+          }
+          
+          $importedModules += $moduleName
+        }
+        else {
+          Write-Verbose "$moduleName module not found in module list (attempt $($retryCount + 1)/$MaxRetries)"
+          $allModulesAvailable = $false
+        }
+      }
+      
+      # Verify key cmdlets are available from both modules
+      if ($allModulesAvailable) {
+        $deploymentCmdlet = Get-Command Get-CertificationAuthority -ErrorAction SilentlyContinue
+        $administrationCmdlet = Get-Command Get-CACrlDistributionPoint -ErrorAction SilentlyContinue
+        
+        if ($deploymentCmdlet -and $administrationCmdlet) {
+          Write-Verbose "All ADCS modules and cmdlets verified successfully"
+          Write-Verbose "  Imported modules: $($importedModules -join ', ')"
+          return $true
+        }
+        else {
+          Write-Verbose "Modules imported but some cmdlets not available yet"
+          if (-not $deploymentCmdlet) {
+            Write-Verbose "  Missing: Get-CertificationAuthority (from ADCSDeployment)"
+          }
+          if (-not $administrationCmdlet) {
+            Write-Verbose "  Missing: Get-CACrlDistributionPoint (from ADCSAdministration)"
+          }
+        }
+      }
+      
+      $retryCount++
     }
     
-    # Import if not already loaded
-    if (-not (Get-Module -Name ADCSDeployment -ErrorAction SilentlyContinue)) {
-      Import-Module ADCSDeployment -ErrorAction SilentlyContinue | Out-Null
-    }
-    
-    # Verify cmdlet is available
-    if (Get-Command Get-CertificationAuthority -ErrorAction SilentlyContinue) {
-      return $true
-    }
-    
+    Write-Verbose "Failed to import ADCS modules after $MaxRetries attempts"
+    Write-Verbose "Required modules: $($requiredModules -join ', ')"
+    Write-Verbose "Available modules: $((Get-Module -ListAvailable -Name $requiredModules -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name) -join ', ')"
     return $false
   }
   catch {
+    Write-Verbose "Error importing ADCS modules: $_"
     return $false
   }
 }
@@ -1119,34 +1372,65 @@ Function Backup-CAKeys {
     
     # Prompt for backup password (minimum 12 characters, stored separately)
     Write-Host ""
-    Write-Host "CA BACKUP PASSWORD REQUIRED" -ForegroundColor Yellow
-    Write-Host "Enter a strong password to protect the CA private key backup." -ForegroundColor Yellow
-    Write-Host "IMPORTANT: Store this password securely and separately from the backup!" -ForegroundColor Red
-    $backupPassword = Read-Host "Enter backup password" -AsSecureString
-    $backupPasswordConfirm = Read-Host "Confirm backup password" -AsSecureString
+    Write-Host "═══════════════════════════════════════════════════════════════════════════════" -ForegroundColor Yellow
+    Write-Host " CA BACKUP PASSWORD REQUIRED" -ForegroundColor Yellow
+    Write-Host "═══════════════════════════════════════════════════════════════════════════════" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "Enter a strong password to protect the CA private key backup." -ForegroundColor White
+    Write-Host ""
+    Write-Host "  ⚠ " -NoNewline -ForegroundColor Red
+    Write-Host "IMPORTANT: Store this password securely and separately from the backup!" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "  Requirements:" -ForegroundColor Cyan
+    Write-Host "    • Minimum 12 characters" -ForegroundColor Gray
+    Write-Host "    • Use a strong, unique password" -ForegroundColor Gray
+    Write-Host "    • Store password separately from backup files" -ForegroundColor Gray
+    Write-Host ""
     
-    # Validate password match and strength (convert to plain text temporarily for validation)
-    $BSTR1 = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($backupPassword)
-    $plainPassword1 = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR1)
-    $BSTR2 = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($backupPasswordConfirm)
-    $plainPassword2 = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR2)
-    
-    if ($plainPassword1 -ne $plainPassword2) {
+    $passwordMatch = $false
+    do {
+      Write-Host "  Enter backup password: " -NoNewline -ForegroundColor Yellow
+      $backupPassword = Read-Host -AsSecureString
+      
+      Write-Host "  Confirm backup password: " -NoNewline -ForegroundColor Yellow
+      $backupPasswordConfirm = Read-Host -AsSecureString
+      
+      # Validate password match and strength (convert to plain text temporarily for validation)
+      $BSTR1 = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($backupPassword)
+      $plainPassword1 = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR1)
+      $BSTR2 = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($backupPasswordConfirm)
+      $plainPassword2 = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR2)
+      
+      $validationError = $null
+      
+      if ($plainPassword1 -ne $plainPassword2) {
+        $validationError = "Passwords do not match. Please try again."
+      }
+      elseif ($plainPassword1.Length -lt 12) {
+        $validationError = "Backup password must be at least 12 characters long. Current length: $($plainPassword1.Length)"
+      }
+      
+      # Clear plain text passwords from memory immediately
       [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR1)
       [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR2)
-      throw "Passwords do not match"
-    }
-    
-    if ($plainPassword1.Length -lt 12) {
-      [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR1)
-      [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR2)
-      throw "Backup password must be at least 12 characters long"
-    }
-    
-    # Clear plain text passwords from memory immediately
-    [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR1)
-    [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR2)
-    Remove-Variable plainPassword1, plainPassword2 -ErrorAction SilentlyContinue
+      Remove-Variable plainPassword1, plainPassword2 -ErrorAction SilentlyContinue
+      
+      if ($validationError) {
+        Write-Host ""
+        Write-Host "  ✗ " -NoNewline -ForegroundColor Red
+        Write-Host $validationError -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "  Please try again." -ForegroundColor Gray
+        Write-Host ""
+      }
+      else {
+        Write-Host ""
+        Write-Host "  ✓ " -NoNewline -ForegroundColor Green
+        Write-Host "Password accepted" -ForegroundColor Gray
+        Write-Host ""
+        $passwordMatch = $true
+      }
+    } while (-not $passwordMatch)
     
     # Find CA certificate - try multiple methods to locate it
     Write-Verbose "Searching for CA certificate with name: $caName"
@@ -1422,8 +1706,10 @@ try {
   # Idempotency check: skip installation if CA already exists
   if (Test-CAInstalled) {
     Write-Warning "Certificate Authority appears to be already installed."
-    $response = Read-Host "Do you want to continue with configuration changes? [y/n]"
-    if ($response -ne 'y') {
+    $continue = Read-UserConfirmation `
+      -Message "Do you want to continue with configuration changes?" `
+      -HelpText "The script will proceed with configuration updates to the existing CA."
+    if (-not $continue) {
       Report-Status "Script execution cancelled by user." 0 Yellow
       exit 0
     }
@@ -1471,8 +1757,11 @@ try {
     Write-Host "  - Process and authorize certificate requests" -ForegroundColor Yellow
     Write-Host "  - Retrieve signed certificates" -ForegroundColor Yellow
     Write-Host ""
-    $response = Read-Host "Do you want to enable PSRemoting now? [y/n]"
-    if ($response -eq 'y') {
+    $enableNow = Read-UserConfirmation `
+      -Message "Do you want to enable PSRemoting now?" `
+      -HelpText "PSRemoting is required for SubCA installation. It can be disabled after SubCA installation completes." `
+      -DefaultYes $true
+    if ($enableNow) {
       try {
         Enable-PSRemoting -SkipNetworkProfileCheck -Force -ErrorAction Stop | Out-Null
         Report-Status "PS Remoting enabled successfully" 0 Green
@@ -1542,14 +1831,44 @@ try {
         }
         else {
           # CA not installed yet, still need CA name
-          Report-Status "CA Name not found. Please provide CA Common Name:" 1 Yellow
-          $RootCAName = (Read-Host).Trim()
+          $RootCAName = Read-UserInput `
+            -Prompt "CA Name not found. Please provide the Common Name for the Root CA:" `
+            -Example "Corp-Root-CA" `
+            -HelpText "This will be the display name of your Root Certificate Authority" `
+            -Validation {
+              param($value)
+              if ([string]::IsNullOrWhiteSpace($value)) {
+                return "CA Common Name cannot be empty."
+              }
+              if ($value.Length -gt 64) {
+                return "CA Common Name cannot exceed 64 characters. Current length: $($value.Length)"
+              }
+              if ($value -notmatch '^[a-zA-Z0-9\-_\.\s]+$') {
+                return "CA Common Name contains invalid characters. Only alphanumeric, hyphens, underscores, dots, and spaces are allowed."
+              }
+              return $true
+            }
         }
       }
       else {
         # Module not available, need CA name
-        Report-Status "CA Name not available. Please provide CA Common Name:" 1 Yellow
-        $RootCAName = (Read-Host).Trim()
+        $RootCAName = Read-UserInput `
+          -Prompt "CA Name not available. Please provide the Common Name for the Root CA:" `
+          -Example "Corp-Root-CA" `
+          -HelpText "This will be the display name of your Root Certificate Authority" `
+          -Validation {
+            param($value)
+            if ([string]::IsNullOrWhiteSpace($value)) {
+              return "CA Common Name cannot be empty."
+            }
+            if ($value.Length -gt 64) {
+              return "CA Common Name cannot exceed 64 characters. Current length: $($value.Length)"
+            }
+            if ($value -notmatch '^[a-zA-Z0-9\-_\.\s]+$') {
+              return "CA Common Name contains invalid characters. Only alphanumeric, hyphens, underscores, dots, and spaces are allowed."
+            }
+            return $true
+          }
       }
     }
     else {
@@ -1561,37 +1880,86 @@ try {
   
   # If no existing CAPolicy.inf or couldn't parse it, collect all input
   if (-not $existingCAPolicy) {
-    $response = $null
+    $confirmed = $false
+    
     do {
-      Report-Status "Enter the Common Name for the Root CA (ex: Corp-Root-CA):" 1 Yellow
-      $RootCAName = (Read-Host).Trim()
-      Write-Verbose "CA Common Name entered: $RootCAName"
-
-      do {
-        Report-Status "Please enter your 5 digit OID number:" 1 Yellow
-        $OID = (Read-Host).Trim()
-        Write-Verbose "OID entered: $OID"
-      } while ($OID -notmatch "^\d{5}$")
-
-      Report-Status "Enter the URL where the CRL files will be located (ex: pki.mycompany.com): " 1 Yellow
-      $httpCRLPath = (Read-Host).Trim()
-      Write-Verbose "CRL URL path entered: $httpCRLPath"
-
-      # Validate all inputs before proceeding
-      if (-not (Test-InputValidation -RootCAName $RootCAName -OID $OID -httpCRLPath $httpCRLPath)) {
-        Report-Status "Please correct the errors above and try again." 0 Red
-        continue
-      }
-
-      Report-Status "You have provided the following information:" 1 Yellow
-      Write-Host "CA Common Name: $RootCAName"
-      Write-Host "OID           : $OID"
-      Write-Host "CRL URL path  : $httpCRLPath"
+      Write-Host ""
+      Write-Host "═══════════════════════════════════════════════════════════════════════════════" -ForegroundColor Cyan
+      Write-Host " ROOT CA CONFIGURATION" -ForegroundColor Cyan
+      Write-Host "═══════════════════════════════════════════════════════════════════════════════" -ForegroundColor Cyan
+      Write-Host ""
+      Write-Host "Please provide the following information to configure your Root CA:" -ForegroundColor White
+      Write-Host ""
+      
+      # Collect CA Common Name
+      $RootCAName = Read-UserInput `
+        -Prompt "Enter the Common Name for the Root CA:" `
+        -Example "Corp-Root-CA" `
+        -HelpText "This will be the display name of your Root Certificate Authority. Maximum 64 characters." `
+        -Validation {
+          param($value)
+          if ([string]::IsNullOrWhiteSpace($value)) {
+            return "CA Common Name cannot be empty."
+          }
+          if ($value.Length -gt 64) {
+            return "CA Common Name cannot exceed 64 characters. Current length: $($value.Length)"
+          }
+          if ($value -notmatch '^[a-zA-Z0-9\-_\.\s]+$') {
+            return "CA Common Name contains invalid characters. Only alphanumeric, hyphens, underscores, dots, and spaces are allowed."
+          }
+          return $true
+        }
+      
+      # Collect OID
+      $OID = Read-UserInput `
+        -Prompt "Enter your 5-digit OID (Private Enterprise Number from IANA):" `
+        -Example "12345" `
+        -HelpText "This is your IANA-assigned Private Enterprise Number (PEN). Must be exactly 5 digits." `
+        -Validation {
+          param($value)
+          if ($value -notmatch '^\d{5}$') {
+            return "OID must be exactly 5 digits. Provided: $value"
+          }
+          return $true
+        }
+      
+      # Collect CRL URL
+      $httpCRLPath = Read-UserInput `
+        -Prompt "Enter the URL where CRL files will be located:" `
+        -Example "pki.mycompany.com" `
+        -HelpText "This is the FQDN where your CRL files will be published. Clients will access CRLs at http://[this-url]/certenroll/" `
+        -Validation {
+          param($value)
+          if ([string]::IsNullOrWhiteSpace($value)) {
+            return "CRL URL path cannot be empty."
+          }
+          if ($value -notmatch '^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$|^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?$') {
+            return "CRL URL path appears to be invalid. Expected format: pki.mycompany.com or similar FQDN."
+          }
+          return $true
+        }
+      
+      # Display summary and confirm
+      Write-Host ""
+      Write-Host "═══════════════════════════════════════════════════════════════════════════════" -ForegroundColor Green
+      Write-Host " CONFIGURATION SUMMARY" -ForegroundColor Green
+      Write-Host "═══════════════════════════════════════════════════════════════════════════════" -ForegroundColor Green
+      Write-Host ""
+      Write-Host "  CA Common Name: " -NoNewline -ForegroundColor Gray
+      Write-Host $RootCAName -ForegroundColor White
+      Write-Host "  OID           : " -NoNewline -ForegroundColor Gray
+      Write-Host $OID -ForegroundColor White
+      Write-Host "  CRL URL Path  : " -NoNewline -ForegroundColor Gray
+      Write-Host $httpCRLPath -ForegroundColor White
+      Write-Host ""
+      
+      $confirmed = Read-UserConfirmation `
+        -Message "Are you satisfied with these values?" `
+        -HelpText "If yes, the script will proceed with CA installation using these values."
+      
       Write-Verbose "User input validation passed"
-
-      Report-Status "Are you satisfied with these answers? [y/n]" 1 Yellow
-      $response = Read-Host
-    } while ($response -ne 'y')
+      
+    } while (-not $confirmed)
   }
 
   #-----------------------------------------------------------------------------------------------------------
@@ -1624,13 +1992,16 @@ try {
         Write-Host "  CRL URL: $httpCRLPath" -ForegroundColor Gray
       }
       else {
-        # Create or update CAPolicy.inf
-        if (Test-CAPolicyExists) {
-          Write-Warning "CAPolicy.inf already exists at $capolicyPath"
-          $response = Read-Host "Do you want to overwrite it with new values? [y/n]"
-          if ($response -ne 'y') {
-            Report-Status "Using existing CAPolicy.inf file" 0 Yellow
-          }
+      # Create or update CAPolicy.inf
+      if (Test-CAPolicyExists) {
+        Write-Warning "CAPolicy.inf already exists at $capolicyPath"
+        $overwrite = Read-UserConfirmation `
+          -Message "Do you want to overwrite the existing CAPolicy.inf file with new values?" `
+          -HelpText "The existing file will be replaced with the new configuration."
+        
+        if (-not $overwrite) {
+          Report-Status "Using existing CAPolicy.inf file" 0 Yellow
+        }
           else {
             $CAPolicyInf = New-CAPolicyInfContent -OID $OID -httpCRLPath $httpCRLPath -KeyLength $script:KeyLength -CAValidityYears $script:CAValidityYears -CRLPeriodYears $script:CRLPeriodYears
             $CAPolicyInf | Out-File $capolicyPath -Encoding utf8 -Force -ErrorAction Stop
@@ -1646,18 +2017,29 @@ try {
 
       # Display file and allow editing (skip in post-reboot scenario)
       if (-not $isPostReboot) {
-        Get-Content $capolicyPath
-        Report-Status "Would you like to edit CAPolicy.Inf? [y/n]" 1 Yellow
-        $response = Read-Host
-        If ($response -eq "y") {
+        Write-Host ""
+        Write-Host "═══════════════════════════════════════════════════════════════════════════════" -ForegroundColor Cyan
+        Write-Host " CAPolicy.inf FILE CONTENTS" -ForegroundColor Cyan
+        Write-Host "═══════════════════════════════════════════════════════════════════════════════" -ForegroundColor Cyan
+        Write-Host ""
+        Get-Content $capolicyPath | ForEach-Object {
+          Write-Host "  $_" -ForegroundColor Gray
+        }
+        Write-Host ""
+        
+        $editFile = Read-UserConfirmation `
+          -Message "Would you like to edit CAPolicy.inf?" `
+          -HelpText "This will open the file in Notepad for manual editing."
+        
+        if ($editFile) {
           try {
             Start-Process -Wait -FilePath "notepad.exe" -ArgumentList $capolicyPath -ErrorAction Stop
+            Report-Status "CAPolicy.inf editing completed" 0 Green
           }
           catch {
             Write-Warning "Could not open notepad. Please edit $capolicyPath manually."
           }
         }
-        $response = $null
       }
     }
     catch {
@@ -1752,29 +2134,48 @@ try {
   $Script:CurrentPhase = 5
   Write-Progress -Activity $Script:ProgressActivity -Status $Script:ProgressPhases[$Script:CurrentPhase] -PercentComplete (($Script:CurrentPhase / $Script:ProgressPhases.Count) * 100)
   
-  # Verify ADCS PowerShell module is available (installed with ADCS-Cert-Authority feature)
-  # This module provides Install-AdcsCertificationAuthority and other ADCS cmdlets
+  # Verify ADCS PowerShell modules are available (installed with ADCS-Cert-Authority feature)
+  # ADCSDeployment: Provides Install-AdcsCertificationAuthority, Get-CertificationAuthority
+  # ADCSAdministration: Provides Get-CACrlDistributionPoint, Add-CACRLDistributionPoint, Get-CAAuthorityInformationAccess, etc.
+  # After reboot, modules may need time to become available - use retry logic
+  Report-Status "Verifying ADCS PowerShell modules availability..." 0 Cyan
   try {
-    if (-not (Get-Module -ListAvailable -Name ADCSDeployment -ErrorAction SilentlyContinue)) {
-      Write-Warning "ADCSDeployment module not found. It should be installed with ADCS-Cert-Authority feature."
-      Write-Warning "Attempting to import module..."
-    }
-    
-    # Import ADCSDeployment module if available (may not be available until after feature install)
-    if (Get-Module -ListAvailable -Name ADCSDeployment -ErrorAction SilentlyContinue) {
-      if (-not (Get-Module -Name ADCSDeployment -ErrorAction SilentlyContinue)) {
-        Import-Module ADCSDeployment -ErrorAction SilentlyContinue
-      }
+    # Try to import module with retry logic (important after reboot)
+    if (-not (Import-ADCSModule -MaxRetries 5 -RetryDelaySeconds 3)) {
+      Write-Host ""
+      Write-Host "========================================" -ForegroundColor Yellow
+      Write-Host "ADCS MODULE NOT AVAILABLE" -ForegroundColor Yellow
+      Write-Host "========================================" -ForegroundColor Yellow
+      Write-Host ""
+      Write-Host "The ADCS PowerShell module is not available even though the feature is installed." -ForegroundColor Cyan
+      Write-Host ""
+      Write-Host "TROUBLESHOOTING STEPS:" -ForegroundColor Green
+      Write-Host "1. Close this PowerShell session and open a NEW PowerShell window" -ForegroundColor Yellow
+      Write-Host "   (The module may require a fresh PowerShell session after reboot)" -ForegroundColor Gray
+      Write-Host "2. Run the script again in the new PowerShell session" -ForegroundColor Yellow
+      Write-Host "3. If still not available, verify the feature installation:" -ForegroundColor Yellow
+      Write-Host "   Get-WindowsFeature ADCS-Cert-Authority" -ForegroundColor White
+      Write-Host "4. Manually import the modules to test:" -ForegroundColor Yellow
+      Write-Host "   Import-Module ADCSDeployment" -ForegroundColor White
+      Write-Host "   Import-Module ADCSAdministration" -ForegroundColor White
+      Write-Host "5. Verify both modules are installed:" -ForegroundColor Yellow
+      Write-Host "   Get-Module -ListAvailable -Name ADCSDeployment,ADCSAdministration" -ForegroundColor White
+      Write-Host ""
+      throw "ADCS PowerShell modules are not available. Both ADCSDeployment and ADCSAdministration modules are required. Please restart PowerShell and try again."
     }
     
     # Verify Install-AdcsCertificationAuthority cmdlet is available
     if (-not (Get-Command Install-AdcsCertificationAuthority -ErrorAction SilentlyContinue)) {
       throw "Install-AdcsCertificationAuthority cmdlet is not available. Ensure ADCS-Cert-Authority feature is installed."
     }
+    
+    Report-Status "ADCS PowerShell modules verified and ready" 0 Green
+    Write-Verbose "  ADCSDeployment: $(if (Get-Module ADCSDeployment) { 'Loaded' } else { 'Not loaded' })"
+    Write-Verbose "  ADCSAdministration: $(if (Get-Module ADCSAdministration) { 'Loaded' } else { 'Not loaded' })"
   }
   catch {
-    Write-Error "ADCS PowerShell module check failed: $_"
-    Write-Error "The ADCSDeployment module should be available after installing ADCS-Cert-Authority feature."
+    Write-Error "ADCS PowerShell modules check failed: $_"
+    Write-Error "Both ADCSDeployment and ADCSAdministration modules should be available after installing ADCS-Cert-Authority feature with -IncludeManagementTools."
     throw
   }
   
@@ -1824,9 +2225,30 @@ try {
       # Verify installation succeeded
       Start-Sleep -Seconds 3
       
-      # Import ADCS module to verify installation
-      if (-not (Import-ADCSModule)) {
-        throw "ADCS module is not available after installation. Please verify ADCS-Cert-Authority feature is installed."
+      # Import ADCS module to verify installation (with retry after installation)
+      Report-Status "Verifying CA installation..." 0 Cyan
+      if (-not (Import-ADCSModule -MaxRetries 3 -RetryDelaySeconds 2)) {
+        Write-Host ""
+        Write-Host "WARNING: ADCS module not immediately available after CA installation." -ForegroundColor Yellow
+        Write-Host "This may be normal. Attempting to verify CA installation..." -ForegroundColor Yellow
+        Write-Host ""
+        
+        # Try one more time with longer delay
+        Start-Sleep -Seconds 5
+        if (-not (Import-ADCSModule -MaxRetries 2 -RetryDelaySeconds 5)) {
+          Write-Host ""
+          Write-Host "========================================" -ForegroundColor Yellow
+          Write-Host "ADCS MODULE NOT AVAILABLE" -ForegroundColor Yellow
+          Write-Host "========================================" -ForegroundColor Yellow
+          Write-Host ""
+          Write-Host "The CA installation may have completed, but the modules are not available." -ForegroundColor Cyan
+          Write-Host "Please close this PowerShell session and open a NEW one, then verify:" -ForegroundColor Yellow
+          Write-Host "  Import-Module ADCSDeployment" -ForegroundColor White
+          Write-Host "  Import-Module ADCSAdministration" -ForegroundColor White
+          Write-Host "  Get-CertificationAuthority" -ForegroundColor White
+          Write-Host ""
+          throw "ADCS modules are not available after installation. Both ADCSDeployment and ADCSAdministration are required. Please restart PowerShell and verify CA installation."
+        }
       }
       
       $verifyCA = Get-CertificationAuthority -ErrorAction SilentlyContinue
@@ -2015,8 +2437,10 @@ try {
     if (-not (Test-CAConfiguration)) {
       Write-Warning "CA configuration validation completed with warnings or errors."
       Write-Warning "Please review the validation results above."
-      $response = Read-Host "Continue anyway? [y/n]"
-      if ($response -ne 'y') {
+      $continue = Read-UserConfirmation `
+        -Message "Continue anyway despite validation warnings/errors?" `
+        -HelpText "The CA may not be fully configured. Review the validation results above before continuing."
+      if (-not $continue) {
         throw "CA configuration validation failed. Please review and fix issues."
       }
     }
@@ -2039,8 +2463,11 @@ try {
       catch {
         Write-Warning "Backup creation failed: $_"
         Write-Warning "CRITICAL: Manual backup is strongly recommended before going offline!"
-        $response = Read-Host "Continue without backup? [y/n]"
-        if ($response -ne 'y') {
+        $continue = Read-UserConfirmation `
+          -Message "Continue without backup?" `
+          -HelpText "WARNING: Proceeding without backup is not recommended. The CA private key will not be backed up." `
+          -DefaultYes $false
+        if (-not $continue) {
           throw "Backup is required. Please fix backup issues and try again."
         }
       }
@@ -2049,10 +2476,12 @@ try {
       Write-Host ""
       Write-Host "WARNING: Backup was not created!" -ForegroundColor Red
       Write-Host "CRITICAL: Create a backup of the CA certificate and private key before going offline!" -ForegroundColor Yellow
-      Write-Host "Use: Backup-CAKeys -BackupPath <path>" -ForegroundColor Yellow
       Write-Host ""
-      $response = Read-Host "Do you want to create a backup now? [y/n]"
-      if ($response -eq 'y') {
+      $createBackup = Read-UserConfirmation `
+        -Message "Do you want to create a backup now?" `
+        -HelpText "This will create a password-protected backup of the CA certificate, private key, and database." `
+        -DefaultYes $true
+      if ($createBackup) {
         try {
           if ([string]::IsNullOrWhiteSpace($BackupPath)) {
             $BackupPath = Join-Path $env:SystemDrive "CA-Backup"
@@ -2065,45 +2494,137 @@ try {
       }
     }
     
-    # Configuration export removed for single-use script simplicity
+    #-----------------------------------------------------------------------------------------------------------
+    # Phase 11: Automatic Configuration Backup
+    #-----------------------------------------------------------------------------------------------------------
+    # Automatically export configuration to JSON file for documentation and future reference
+    # This is done automatically after successful installation
+    Report-Status "Creating configuration backup..." 0 Cyan
+    try {
+      $configBackupDir = Join-Path $env:ProgramData "PKI\Config"
+      if (-not (Test-Path $configBackupDir)) {
+        New-Item -ItemType Directory -Path $configBackupDir -Force -ErrorAction Stop | Out-Null
+      }
+      
+      $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
+      $configBackupPath = Join-Path $configBackupDir "RootCA-Config-$timestamp.json"
+      
+      # Ensure configuration variables are set (try to get from CA if not set)
+      if ([string]::IsNullOrWhiteSpace($RootCAName) -or [string]::IsNullOrWhiteSpace($OID) -or [string]::IsNullOrWhiteSpace($httpCRLPath)) {
+        Write-Verbose "Some configuration variables are missing, attempting to retrieve from CA or CAPolicy.inf..."
+        
+        # Try to get from CA configuration
+        if (Import-ADCSModule) {
+          $caConfig = Get-CertificationAuthority -ErrorAction SilentlyContinue
+          if ($caConfig -and [string]::IsNullOrWhiteSpace($RootCAName)) {
+            $RootCAName = $caConfig.Name
+            Write-Verbose "Retrieved CA Name from CA configuration: $RootCAName"
+          }
+        }
+        
+        # Try to get from CAPolicy.inf
+        $capolicyPath = Join-Path $env:SystemRoot "CAPolicy.inf"
+        if (Test-Path $capolicyPath) {
+          $existingCAPolicy = Read-CAPolicyInf -Path $capolicyPath
+          if ($existingCAPolicy) {
+            if ([string]::IsNullOrWhiteSpace($OID)) {
+              $OID = $existingCAPolicy['OID']
+              Write-Verbose "Retrieved OID from CAPolicy.inf: $OID"
+            }
+            if ([string]::IsNullOrWhiteSpace($httpCRLPath)) {
+              $httpCRLPath = $existingCAPolicy['httpCRLPath']
+              Write-Verbose "Retrieved CRL URL from CAPolicy.inf: $httpCRLPath"
+            }
+          }
+        }
+      }
+      
+      # Get additional CA configuration if available
+      $additionalConfig = @{}
+      if (Import-ADCSModule) {
+        $caConfig = Get-CertificationAuthority -ErrorAction SilentlyContinue
+        if ($caConfig) {
+          $additionalConfig['CAName'] = $caConfig.Name
+          $additionalConfig['CAType'] = $caConfig.CAType
+          $additionalConfig['CAStatus'] = 'Installed'
+          $additionalConfig['CertificateThumbprint'] = $caConfig.CertificateThumbprint
+        }
+      }
+      
+      # Export configuration
+      if (Export-CAConfiguration -Path $configBackupPath -AdditionalConfig $additionalConfig) {
+        Report-Status "Configuration backup created successfully" 0 Green
+        Write-Host "  Location: $configBackupPath" -ForegroundColor Gray
+        Write-Host "  This file contains all CA configuration parameters for documentation and reference." -ForegroundColor Gray
+      }
+      else {
+        throw "Export-CAConfiguration returned false"
+      }
+    }
+    catch {
+      Write-Warning "Failed to create configuration backup: $_"
+      Write-Warning "Configuration backup is optional but recommended for documentation."
+      Write-Verbose "Configuration backup error details: $($_.Exception.Message)"
+    }
     
     # Clear progress indicator
     Write-Progress -Activity $Script:ProgressActivity -Completed
 
     #-----------------------------------------------------------------------------------------------------------
-    # Phase 11: Completion and Next Steps
+    # Phase 12: Completion and Next Steps
     #-----------------------------------------------------------------------------------------------------------
     Report-Status "Root CA Build Completed!" 0 Green
     Write-Host ""
-    Write-Host "========================================" -ForegroundColor Green
-    Write-Host "ROOT CA INSTALLATION COMPLETE" -ForegroundColor Green
-    Write-Host "========================================" -ForegroundColor Green
+    Write-Host "═══════════════════════════════════════════════════════════════════════════════" -ForegroundColor Green
+    Write-Host " ROOT CA INSTALLATION COMPLETE" -ForegroundColor Green
+    Write-Host "═══════════════════════════════════════════════════════════════════════════════" -ForegroundColor Green
     Write-Host ""
-    Write-Host "NEXT STEPS FOR SUBCA INSTALLATION:" -ForegroundColor Cyan
+    Write-Host "AUTOMATED TASKS COMPLETED:" -ForegroundColor Cyan
+    Write-Host "  ✓ CA installed and configured" -ForegroundColor Green
+    Write-Host "  ✓ PSRemoting enabled (required for SubCA)" -ForegroundColor Green
+    Write-Host "  ✓ CertConfig share created (\\$env:COMPUTERNAME\CertConfig)" -ForegroundColor Green
+    Write-Host "  ✓ Configuration backup created" -ForegroundColor Green
+    if ($CreateBackup -or (Test-Path (Join-Path $env:SystemDrive "CA-Backup"))) {
+      Write-Host "  ✓ CA certificate and key backup created" -ForegroundColor Green
+    }
+    Write-Host ""
+    Write-Host "═══════════════════════════════════════════════════════════════════════════════" -ForegroundColor Cyan
+    Write-Host " NEXT STEPS FOR SUBCA INSTALLATION" -ForegroundColor Cyan
+    Write-Host "═══════════════════════════════════════════════════════════════════════════════" -ForegroundColor Cyan
+    Write-Host ""
     Write-Host "1. Ensure this Root CA server remains ONLINE and accessible" -ForegroundColor Yellow
-    Write-Host "2. Verify PSRemoting is enabled (required for SubCA connection)" -ForegroundColor Yellow
-    Write-Host "3. Verify CertConfig share (C:\CAConfig) is accessible to SubCA server" -ForegroundColor Yellow
-    Write-Host "4. Run Build-SubCA.ps1 on the SubCA server" -ForegroundColor Yellow
-    Write-Host "   - The SubCA script will connect to this server via PSRemoting" -ForegroundColor Yellow
-    Write-Host "   - It will submit certificate requests and retrieve signed certificates" -ForegroundColor Yellow
-    Write-Host "5. After SubCA installation completes, proceed with security hardening below" -ForegroundColor Yellow
+    Write-Host "2. Verify connectivity from SubCA server:" -ForegroundColor Yellow
+    Write-Host "   - PSRemoting: Test-WSMan -ComputerName $env:COMPUTERNAME" -ForegroundColor White
+    Write-Host "   - File Share: Test-Path \\$env:COMPUTERNAME\CertConfig" -ForegroundColor White
+    Write-Host "3. Run Build-SubCA.ps1 on the SubCA server" -ForegroundColor Yellow
+    Write-Host "   - The SubCA script will connect via PSRemoting" -ForegroundColor Gray
+    Write-Host "   - It will submit certificate requests and retrieve signed certificates" -ForegroundColor Gray
     Write-Host ""
-    Write-Host "========================================" -ForegroundColor Green
-    Write-Host "POST-INSTALLATION SECURITY CHECKLIST" -ForegroundColor Yellow
-    Write-Host "(Complete AFTER SubCA installation)" -ForegroundColor Yellow
-    Write-Host "========================================" -ForegroundColor Green
-    Write-Host "[ ] Disable PSRemoting (no longer needed after SubCA installation)" -ForegroundColor Yellow
-    Write-Host "[ ] Disable all network adapters (physical disconnection preferred)" -ForegroundColor Yellow
-    Write-Host "[ ] Disable unnecessary services (Spooler, RemoteRegistry, etc.)" -ForegroundColor Yellow
-    Write-Host "[ ] Enable BitLocker disk encryption (if supported)" -ForegroundColor Yellow
-    Write-Host "[ ] Verify backups are stored in secure, offline location" -ForegroundColor Yellow
-    Write-Host "[ ] Shutdown server and store in physically secure location" -ForegroundColor Yellow
-    Write-Host "[ ] Document all access and operations" -ForegroundColor Yellow
+    Write-Host "═══════════════════════════════════════════════════════════════════════════════" -ForegroundColor Yellow
+    Write-Host " POST-SUBCA INSTALLATION SECURITY HARDENING" -ForegroundColor Yellow
+    Write-Host "═══════════════════════════════════════════════════════════════════════════════" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "After SubCA installation completes, perform these security steps:" -ForegroundColor White
+    Write-Host ""
+    Write-Host "  [ ] Disable PSRemoting (no longer needed)" -ForegroundColor Yellow
+    Write-Host "      Disable-PSRemoting -Force" -ForegroundColor Gray
+    Write-Host ""
+    Write-Host "  [ ] Disable network adapters (physical disconnection preferred)" -ForegroundColor Yellow
+    Write-Host "      Get-NetAdapter | Disable-NetAdapter -Confirm:$false" -ForegroundColor Gray
+    Write-Host ""
+    Write-Host "  [ ] Disable unnecessary services" -ForegroundColor Yellow
+    Write-Host "      Get-Service Spooler,RemoteRegistry | Set-Service -StartupType Disabled" -ForegroundColor Gray
+    Write-Host ""
+    Write-Host "  [ ] Shutdown and store server in physically secure location" -ForegroundColor Yellow
     Write-Host ""
     Write-Host "IMPORTANT REMINDERS:" -ForegroundColor Cyan
-    Write-Host "- This server must remain ONLINE during SubCA installation" -ForegroundColor Yellow
-    Write-Host "- Take a VM snapshot now before proceeding with SubCA installation" -ForegroundColor Yellow
-    Write-Host "- Only bring this server online when needed (SubCA certs, renewals, revocations, CRL updates)" -ForegroundColor Yellow
+    Write-Host "  • This server MUST remain ONLINE during SubCA installation" -ForegroundColor Yellow
+    Write-Host "  • Take a VM snapshot now before proceeding with SubCA installation" -ForegroundColor Yellow
+    Write-Host "  • Only bring this server online when needed:" -ForegroundColor Yellow
+    Write-Host "    - SubCA certificate issuance/renewal" -ForegroundColor Gray
+    Write-Host "    - Root CA certificate renewal" -ForegroundColor Gray
+    Write-Host "    - Certificate revocation" -ForegroundColor Gray
+    Write-Host "    - CRL publication" -ForegroundColor Gray
     Write-Host ""
     $Script:ExitCode = 0
   }
