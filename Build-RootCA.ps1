@@ -629,10 +629,15 @@ Function Test-InputValidation {
     $errors += "CRL URL path cannot be empty."
   }
   else {
-    # Simplified FQDN validation - use regex object to avoid parsing issues
+    # Simplified FQDN validation - store patterns in variables first to avoid parsing issues
     try {
-      $fqdnMultiRegex = [regex]'^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9](\.[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9])+\.[a-zA-Z]{2,}$'
-      $fqdnSingleRegex = [regex]'^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]$'
+      # Store regex patterns in variables (single quotes = literal, no variable expansion)
+      $fqdnMultiPattern = '^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9](\.[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9])+\.[a-zA-Z]{2,}$'
+      $fqdnSinglePattern = '^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]$'
+      
+      # Create regex objects from stored patterns
+      $fqdnMultiRegex = [regex]$fqdnMultiPattern
+      $fqdnSingleRegex = [regex]$fqdnSinglePattern
       
       if (-not ($fqdnMultiRegex.IsMatch($httpCRLPath) -or $fqdnSingleRegex.IsMatch($httpCRLPath))) {
         $errors += "CRL URL path appears to be invalid. Expected format: pki.mycompany.com or similar FQDN."
@@ -1950,10 +1955,15 @@ try {
           if ([string]::IsNullOrWhiteSpace($value)) {
             return "CRL URL path cannot be empty."
           }
-          # Simplified FQDN validation - use regex object to avoid parsing issues
+          # Simplified FQDN validation - store patterns in variables first to avoid parsing issues
           try {
-            $fqdnMultiRegex = [regex]'^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9](\.[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9])+\.[a-zA-Z]{2,}$'
-            $fqdnSingleRegex = [regex]'^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]$'
+            # Store regex patterns in variables (single quotes = literal, no variable expansion)
+            $fqdnMultiPattern = '^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9](\.[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9])+\.[a-zA-Z]{2,}$'
+            $fqdnSinglePattern = '^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]$'
+            
+            # Create regex objects from stored patterns
+            $fqdnMultiRegex = [regex]$fqdnMultiPattern
+            $fqdnSingleRegex = [regex]$fqdnSinglePattern
             
             if (-not ($fqdnMultiRegex.IsMatch($value) -or $fqdnSingleRegex.IsMatch($value))) {
               return "CRL URL path appears to be invalid. Expected format: pki.mycompany.com or similar FQDN."
