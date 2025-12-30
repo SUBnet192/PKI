@@ -336,15 +336,23 @@ Function Test-Prerequisites {
   try {
     $caService = Get-Service -Name certsvc -ErrorAction SilentlyContinue
     if ($caService) {
-      $caConfig = Get-CertificationAuthority -ErrorAction SilentlyContinue
-      if ($caConfig) {
-        Write-Warning "Certificate Authority is already installed and configured."
-        Write-Warning "CA Name: $($caConfig.Name)"
-        Write-Warning "CA Type: $($caConfig.CAType)"
-        $response = Read-Host "Do you want to continue anyway? This may cause conflicts. [y/n]"
-        if ($response -ne 'y') {
-          throw "Script execution cancelled by user."
+      # Try to import ADCS module to check CA configuration
+      if (Import-ADCSModule) {
+        $caConfig = Get-CertificationAuthority -ErrorAction SilentlyContinue
+        if ($caConfig) {
+          Write-Warning "Certificate Authority is already installed and configured."
+          Write-Warning "CA Name: $($caConfig.Name)"
+          Write-Warning "CA Type: $($caConfig.CAType)"
+          $response = Read-Host "Do you want to continue anyway? This may cause conflicts. [y/n]"
+          if ($response -ne 'y') {
+            throw "Script execution cancelled by user."
+          }
         }
+      }
+      else {
+        # Module not available - service exists but can't verify CA config
+        # This is OK if we're checking before feature installation
+        Write-Verbose "ADCS module not available yet - this is normal if CA feature isn't installed"
       }
     }
     Report-Status "CA installation check: OK" 0 Green
@@ -443,6 +451,42 @@ Function Test-InputValidation {
 }
 
 #-----------------------------------------------------------------------------------------------------------
+# Function: Import-ADCSModule
+#-----------------------------------------------------------------------------------------------------------
+<#
+.SYNOPSIS
+  Safely imports the ADCSDeployment module if available
+  
+.DESCRIPTION
+  Attempts to import the ADCSDeployment module which contains ADCS cmdlets.
+  Returns $true if module is available and imported, $false otherwise.
+  This is safe to call even if the module isn't available yet (e.g., before feature installation).
+#>
+Function Import-ADCSModule {
+  try {
+    # Check if module is available
+    if (-not (Get-Module -ListAvailable -Name ADCSDeployment -ErrorAction SilentlyContinue)) {
+      return $false
+    }
+    
+    # Import if not already loaded
+    if (-not (Get-Module -Name ADCSDeployment -ErrorAction SilentlyContinue)) {
+      Import-Module ADCSDeployment -ErrorAction SilentlyContinue | Out-Null
+    }
+    
+    # Verify cmdlet is available
+    if (Get-Command Get-CertificationAuthority -ErrorAction SilentlyContinue) {
+      return $true
+    }
+    
+    return $false
+  }
+  catch {
+    return $false
+  }
+}
+
+#-----------------------------------------------------------------------------------------------------------
 # Function: Test-CAInstalled
 #-----------------------------------------------------------------------------------------------------------
 <#
@@ -452,13 +496,20 @@ Function Test-InputValidation {
 .DESCRIPTION
   Verifies if Certificate Authority is already installed to allow safe script re-execution.
   Returns $true if CA service is running and CA configuration exists.
+  Safely handles cases where ADCS module is not yet available.
 #>
 Function Test-CAInstalled {
   try {
     $caService = Get-Service -Name certsvc -ErrorAction SilentlyContinue
     if ($caService -and $caService.Status -eq 'Running') {
-      $caConfig = Get-CertificationAuthority -ErrorAction SilentlyContinue
-      return ($null -ne $caConfig)
+      # Import ADCS module if available (may not be available if CA isn't installed yet)
+      if (Import-ADCSModule) {
+        $caConfig = Get-CertificationAuthority -ErrorAction SilentlyContinue
+        return ($null -ne $caConfig)
+      }
+      # If module not available but service is running, assume CA might be installed
+      # but module not loaded (e.g., after reboot before module import)
+      return $true
     }
     return $false
   }
@@ -644,6 +695,12 @@ Function Test-CAConfiguration {
     
     # Verify CA object exists and is accessible
     try {
+        # Ensure ADCS module is imported
+        if (-not (Import-ADCSModule)) {
+            $errors += "ADCS module is not available. Cannot verify CA configuration."
+            return $false
+        }
+        
         $ca = Get-CertificationAuthority -ErrorAction Stop
         if (-not $ca) {
             $errors += "Could not retrieve CA configuration"
@@ -856,7 +913,11 @@ Function Backup-CAKeys {
       Report-Status "Created backup directory: $BackupPath" 0 Green
     }
     
-    # Get CA configuration
+    # Import ADCS module and get CA configuration
+    if (-not (Import-ADCSModule)) {
+      throw "ADCS module is not available. Cannot create backup."
+    }
+    
     $caConfig = Get-CertificationAuthority -ErrorAction Stop
     if (-not $caConfig) {
       throw "Could not retrieve CA configuration"
@@ -1291,10 +1352,13 @@ try {
   
   if (Test-CAInstalled) {
     Report-Status "Certificate Authority is already installed. Skipping installation." 0 Yellow
-    $existingCA = Get-CertificationAuthority -ErrorAction SilentlyContinue
-    if ($existingCA) {
-      Report-Status "Existing CA Name: $($existingCA.Name)" 0 Yellow
-      Report-Status "Existing CA Type: $($existingCA.CAType)" 0 Yellow
+    # Import ADCS module to get CA details
+    if (Import-ADCSModule) {
+      $existingCA = Get-CertificationAuthority -ErrorAction SilentlyContinue
+      if ($existingCA) {
+        Report-Status "Existing CA Name: $($existingCA.Name)" 0 Yellow
+        Report-Status "Existing CA Type: $($existingCA.CAType)" 0 Yellow
+      }
     }
   }
   else {
@@ -1331,6 +1395,12 @@ try {
       
       # Verify installation succeeded
       Start-Sleep -Seconds 3
+      
+      # Import ADCS module to verify installation
+      if (-not (Import-ADCSModule)) {
+        throw "ADCS module is not available after installation. Please verify ADCS-Cert-Authority feature is installed."
+      }
+      
       $verifyCA = Get-CertificationAuthority -ErrorAction SilentlyContinue
       if (-not $verifyCA) {
         throw "CA installation completed but could not verify CA configuration."
