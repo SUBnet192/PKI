@@ -30,7 +30,7 @@ After working on ransomware recovery and infrastructure improvements, I noticed 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    Root CA (Offline)                        │
-│  - Standalone CA (not domain-joined)                       │
+│  - Standalone CA (not domain-joined)                        │
 │  - Valid for 10 years                                       │
 │  - Only online during SubCA installation                    │
 │  - Taken offline after deployment                           │
@@ -42,7 +42,7 @@ After working on ransomware recovery and infrastructure improvements, I noticed 
 │  - Domain-joined Enterprise CA                              │
 │  - Valid for 5 years                                        │
 │  - Issues certificates to domain members                    │
-│  - Valid for 1 year (configurable)                         │
+│  - Valid for 1 year (configurable)                          │
 └─────────────────────────────────────────────────────────────┘
 ```
 
