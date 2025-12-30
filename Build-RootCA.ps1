@@ -615,7 +615,7 @@ Function Test-InputValidation {
   elseif ($RootCAName.Length -gt 64) {
     $errors += "CA Common Name cannot exceed 64 characters. Current length: $($RootCAName.Length)"
   }
-  elseif ($RootCAName -notmatch '^[a-zA-Z0-9\-_\.\s]+$') {
+  elseif ($RootCAName -notmatch '^[a-zA-Z0-9_\.\s-]+$') {
     $errors += "CA Common Name contains invalid characters. Only alphanumeric, hyphens, underscores, dots, and spaces are allowed."
   }
   
@@ -628,7 +628,7 @@ Function Test-InputValidation {
   if ([string]::IsNullOrWhiteSpace($httpCRLPath)) {
     $errors += "CRL URL path cannot be empty."
   }
-  elseif ($httpCRLPath -notmatch '^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$|^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?$') {
+  elseif ($httpCRLPath -notmatch "^([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$|^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$") {
     $errors += "CRL URL path appears to be invalid. Expected format: pki.mycompany.com or similar FQDN."
   }
   
@@ -1904,7 +1904,7 @@ try {
           if ($value.Length -gt 64) {
             return "CA Common Name cannot exceed 64 characters. Current length: $($value.Length)"
           }
-          if ($value -notmatch '^[a-zA-Z0-9\-_\.\s]+$') {
+          if ($value -notmatch '^[a-zA-Z0-9_\.\s-]+$') {
             return "CA Common Name contains invalid characters. Only alphanumeric, hyphens, underscores, dots, and spaces are allowed."
           }
           return $true
@@ -1933,7 +1933,7 @@ try {
           if ([string]::IsNullOrWhiteSpace($value)) {
             return "CRL URL path cannot be empty."
           }
-          if ($value -notmatch '^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$|^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?$') {
+          if ($value -notmatch "^([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$|^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$") {
             return "CRL URL path appears to be invalid. Expected format: pki.mycompany.com or similar FQDN."
           }
           return $true
