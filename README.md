@@ -271,15 +271,6 @@ Check these logs for detailed error information.
 
 ---
 
-## 📚 Additional Documentation
-
-- **[PARAMETER_SIMPLIFICATION.md](PARAMETER_SIMPLIFICATION.md)** - Parameter documentation and simplification details
-- **[SECURITY_IMPLEMENTATION_SUMMARY.md](SECURITY_IMPLEMENTATION_SUMMARY.md)** - Security enhancements and best practices
-- **[OFFLINE_ROOT_CA_SECURITY_BEST_PRACTICES.md](OFFLINE_ROOT_CA_SECURITY_BEST_PRACTICES.md)** - Detailed security recommendations
-- **[WINDOWS_SERVER_2025_COMPATIBILITY.md](WINDOWS_SERVER_2025_COMPATIBILITY.md)** - Compatibility information
-
----
-
 ## 🎥 Video Tutorial
 
 <div align="left">
