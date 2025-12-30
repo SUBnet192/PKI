@@ -629,25 +629,29 @@ Function Test-InputValidation {
     $errors += "CRL URL path cannot be empty."
   }
   else {
-    # Simplified FQDN validation - store patterns in variables first to avoid parsing issues
-    try {
-      # Store regex patterns in variables (single quotes = literal, no variable expansion)
-      $fqdnMultiPattern = '^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9](\.[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9])+\.[a-zA-Z]{2,}$'
-      $fqdnSinglePattern = '^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]$'
-      
-      # Create regex objects from stored patterns
-      $fqdnMultiRegex = [regex]$fqdnMultiPattern
-      $fqdnSingleRegex = [regex]$fqdnSinglePattern
-      
-      if (-not ($fqdnMultiRegex.IsMatch($httpCRLPath) -or $fqdnSingleRegex.IsMatch($httpCRLPath))) {
-        $errors += "CRL URL path appears to be invalid. Expected format: pki.mycompany.com or similar FQDN."
-      }
+    # Simplified FQDN validation - basic pattern matching to avoid PowerShell parsing issues
+    # Allow alphanumeric, hyphens, dots; must start and end with alphanumeric
+    $isValid = $true
+    
+    # Basic checks: length, characters, and structure
+    if ($httpCRLPath.Length -lt 3 -or $httpCRLPath.Length -gt 255) {
+      $isValid = $false
     }
-    catch {
-      # Fallback to simple validation if regex fails
-      if ($httpCRLPath -notmatch '^[a-zA-Z0-9.-]+$' -or $httpCRLPath.Length -lt 3) {
-        $errors += "CRL URL path appears to be invalid. Expected format: pki.mycompany.com or similar FQDN."
-      }
+    elseif ($httpCRLPath -notmatch '^[a-zA-Z0-9]' -or $httpCRLPath -notmatch '[a-zA-Z0-9]$') {
+      # Must start and end with alphanumeric
+      $isValid = $false
+    }
+    elseif ($httpCRLPath -match '[^a-zA-Z0-9.-]') {
+      # Contains invalid characters (only alphanumeric, dots, hyphens allowed)
+      $isValid = $false
+    }
+    elseif ($httpCRLPath -match '\.\.' -or $httpCRLPath -match '--' -or $httpCRLPath.StartsWith('.') -or $httpCRLPath.StartsWith('-')) {
+      # No consecutive dots, consecutive hyphens, or starting with dot/hyphen
+      $isValid = $false
+    }
+    
+    if (-not $isValid) {
+      $errors += "CRL URL path appears to be invalid. Expected format: pki.mycompany.com or similar FQDN."
     }
   }
   
@@ -1955,25 +1959,29 @@ try {
           if ([string]::IsNullOrWhiteSpace($value)) {
             return "CRL URL path cannot be empty."
           }
-          # Simplified FQDN validation - store patterns in variables first to avoid parsing issues
-          try {
-            # Store regex patterns in variables (single quotes = literal, no variable expansion)
-            $fqdnMultiPattern = '^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9](\.[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9])+\.[a-zA-Z]{2,}$'
-            $fqdnSinglePattern = '^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]$'
-            
-            # Create regex objects from stored patterns
-            $fqdnMultiRegex = [regex]$fqdnMultiPattern
-            $fqdnSingleRegex = [regex]$fqdnSinglePattern
-            
-            if (-not ($fqdnMultiRegex.IsMatch($value) -or $fqdnSingleRegex.IsMatch($value))) {
-              return "CRL URL path appears to be invalid. Expected format: pki.mycompany.com or similar FQDN."
-            }
+          # Simplified FQDN validation - basic pattern matching to avoid PowerShell parsing issues
+          # Allow alphanumeric, hyphens, dots; must start and end with alphanumeric
+          $isValid = $true
+          
+          # Basic checks: length, characters, and structure
+          if ($value.Length -lt 3 -or $value.Length -gt 255) {
+            $isValid = $false
           }
-          catch {
-            # Fallback to simple validation if regex fails
-            if ($value -notmatch '^[a-zA-Z0-9.-]+$' -or $value.Length -lt 3) {
-              return "CRL URL path appears to be invalid. Expected format: pki.mycompany.com or similar FQDN."
-            }
+          elseif ($value -notmatch '^[a-zA-Z0-9]' -or $value -notmatch '[a-zA-Z0-9]$') {
+            # Must start and end with alphanumeric
+            $isValid = $false
+          }
+          elseif ($value -match '[^a-zA-Z0-9.-]') {
+            # Contains invalid characters (only alphanumeric, dots, hyphens allowed)
+            $isValid = $false
+          }
+          elseif ($value -match '\.\.' -or $value -match '--' -or $value.StartsWith('.') -or $value.StartsWith('-')) {
+            # No consecutive dots, consecutive hyphens, or starting with dot/hyphen
+            $isValid = $false
+          }
+          
+          if (-not $isValid) {
+            return "CRL URL path appears to be invalid. Expected format: pki.mycompany.com or similar FQDN."
           }
           return $true
         }
