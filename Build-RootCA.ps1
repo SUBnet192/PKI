@@ -530,6 +530,55 @@ Function Test-CAPolicyExists {
 }
 
 #-----------------------------------------------------------------------------------------------------------
+# Function: Read-CAPolicyInf
+#-----------------------------------------------------------------------------------------------------------
+<#
+.SYNOPSIS
+  Reads and parses existing CAPolicy.inf file to extract configuration values
+  
+.DESCRIPTION
+  Extracts OID and CRL URL from an existing CAPolicy.inf file.
+  Returns a hashtable with OID and httpCRLPath if successfully parsed.
+  Returns $null if file doesn't exist or cannot be parsed.
+#>
+Function Read-CAPolicyInf {
+  param(
+    [Parameter(Mandatory=$true)]
+    [string]$Path
+  )
+  
+  try {
+    if (-not (Test-Path $Path)) {
+      return $null
+    }
+    
+    $content = Get-Content $Path -Raw
+    $result = @{}
+    
+    # Extract OID from line like "OID= 1.3.6.1.4.1.12345"
+    if ($content -match 'OID\s*=\s*1\.3\.6\.1\.4\.1\.(\d{5})') {
+      $result['OID'] = $matches[1]
+    }
+    
+    # Extract CRL URL from line like "URL=http://pki.company.com/pki/cps.html"
+    if ($content -match 'URL=http://([^/]+)') {
+      $result['httpCRLPath'] = $matches[1]
+    }
+    
+    # Return result only if both values were found
+    if ($result.ContainsKey('OID') -and $result.ContainsKey('httpCRLPath')) {
+      return $result
+    }
+    
+    return $null
+  }
+  catch {
+    Write-Verbose "Could not parse CAPolicy.inf: $_"
+    return $null
+  }
+}
+
+#-----------------------------------------------------------------------------------------------------------
 # Function: New-CAPolicyInfContent
 #-----------------------------------------------------------------------------------------------------------
 <#
@@ -1168,40 +1217,89 @@ try {
   # Phase 4: User Input Collection
   #-----------------------------------------------------------------------------------------------------------
   # Collect required information from user: CA name, OID, and CRL URL
-  # These values are used throughout the CA configuration
+  # If CAPolicy.inf exists, extract values from it to avoid re-prompting
   $Script:CurrentPhase = 2
   Write-Progress -Activity $Script:ProgressActivity -Status $Script:ProgressPhases[$Script:CurrentPhase] -PercentComplete (($Script:CurrentPhase / $Script:ProgressPhases.Count) * 100)
-  $response = $null
-  do {
-    Report-Status "Enter the Common Name for the Root CA (ex: Corp-Root-CA):" 1 Yellow
-    $RootCAName = (Read-Host).Trim()
-    Write-Verbose "CA Common Name entered: $RootCAName"
-
-    do {
-      Report-Status "Please enter your 5 digit OID number:" 1 Yellow
-      $OID = (Read-Host).Trim()
-      Write-Verbose "OID entered: $OID"
-    } while ($OID -notmatch "^\d{5}$")
-
-    Report-Status "Enter the URL where the CRL files will be located (ex: pki.mycompany.com): " 1 Yellow
-    $httpCRLPath = (Read-Host).Trim()
-    Write-Verbose "CRL URL path entered: $httpCRLPath"
-
-    # Validate all inputs before proceeding
-    if (-not (Test-InputValidation -RootCAName $RootCAName -OID $OID -httpCRLPath $httpCRLPath)) {
-      Report-Status "Please correct the errors above and try again." 0 Red
-      continue
+  
+  $capolicyPath = Join-Path $env:SystemRoot "CAPolicy.inf"
+  $existingCAPolicy = $null
+  
+  # Check if CAPolicy.inf exists and try to read values from it
+  if (Test-CAPolicyExists) {
+    Report-Status "CAPolicy.inf file found. Reading existing configuration..." 0 Cyan
+    $existingCAPolicy = Read-CAPolicyInf -Path $capolicyPath
+    
+    if ($existingCAPolicy) {
+      $OID = $existingCAPolicy['OID']
+      $httpCRLPath = $existingCAPolicy['httpCRLPath']
+      Report-Status "Extracted from existing CAPolicy.inf:" 0 Green
+      Write-Host "  OID           : $OID" -ForegroundColor Yellow
+      Write-Host "  CRL URL path  : $httpCRLPath" -ForegroundColor Yellow
+      Write-Host ""
+      
+      # Try to get CA name from existing CA installation if available
+      if (Import-ADCSModule) {
+        $existingCA = Get-CertificationAuthority -ErrorAction SilentlyContinue
+        if ($existingCA) {
+          $RootCAName = $existingCA.Name
+          Report-Status "CA Name retrieved from existing installation: $RootCAName" 0 Green
+          Write-Host ""
+          Report-Status "Using existing configuration. Proceeding with installation..." 0 Green
+          # Skip user input collection
+        }
+        else {
+          # CA not installed yet, still need CA name
+          Report-Status "CA Name not found. Please provide CA Common Name:" 1 Yellow
+          $RootCAName = (Read-Host).Trim()
+        }
+      }
+      else {
+        # Module not available, need CA name
+        Report-Status "CA Name not available. Please provide CA Common Name:" 1 Yellow
+        $RootCAName = (Read-Host).Trim()
+      }
     }
+    else {
+      # CAPolicy.inf exists but couldn't be parsed - ask for input
+      Write-Warning "CAPolicy.inf exists but could not be parsed. Please provide configuration values."
+      $existingCAPolicy = $null
+    }
+  }
+  
+  # If no existing CAPolicy.inf or couldn't parse it, collect all input
+  if (-not $existingCAPolicy) {
+    $response = $null
+    do {
+      Report-Status "Enter the Common Name for the Root CA (ex: Corp-Root-CA):" 1 Yellow
+      $RootCAName = (Read-Host).Trim()
+      Write-Verbose "CA Common Name entered: $RootCAName"
 
-    Report-Status "You have provided the following information:" 1 Yellow
-    Write-Host "CA Common Name: $RootCAName"
-    Write-Host "OID           : $OID"
-    Write-Host "CRL URL path  : $httpCRLPath"
-    Write-Verbose "User input validation passed"
+      do {
+        Report-Status "Please enter your 5 digit OID number:" 1 Yellow
+        $OID = (Read-Host).Trim()
+        Write-Verbose "OID entered: $OID"
+      } while ($OID -notmatch "^\d{5}$")
 
-    Report-Status "Are you satisfied with these answers? [y/n]" 1 Yellow
-    $response = Read-Host
-  } while ($response -ne 'y')
+      Report-Status "Enter the URL where the CRL files will be located (ex: pki.mycompany.com): " 1 Yellow
+      $httpCRLPath = (Read-Host).Trim()
+      Write-Verbose "CRL URL path entered: $httpCRLPath"
+
+      # Validate all inputs before proceeding
+      if (-not (Test-InputValidation -RootCAName $RootCAName -OID $OID -httpCRLPath $httpCRLPath)) {
+        Report-Status "Please correct the errors above and try again." 0 Red
+        continue
+      }
+
+      Report-Status "You have provided the following information:" 1 Yellow
+      Write-Host "CA Common Name: $RootCAName"
+      Write-Host "OID           : $OID"
+      Write-Host "CRL URL path  : $httpCRLPath"
+      Write-Verbose "User input validation passed"
+
+      Report-Status "Are you satisfied with these answers? [y/n]" 1 Yellow
+      $response = Read-Host
+    } while ($response -ne 'y')
+  }
 
   #-----------------------------------------------------------------------------------------------------------
   # Phase 5: CAPolicy.inf Creation
@@ -1213,25 +1311,32 @@ try {
   Write-Progress -Activity $Script:ProgressActivity -Status $Script:ProgressPhases[$Script:CurrentPhase] -PercentComplete (($Script:CurrentPhase / $Script:ProgressPhases.Count) * 100)
   Report-Status "Create CAPolicy file" 0 Green
   try {
-    $capolicyPath = Join-Path $env:SystemRoot "CAPolicy.inf"
-    
-    # Idempotency: prompt before overwriting existing file
-    if (Test-CAPolicyExists) {
-      Write-Warning "CAPolicy.inf already exists at $capolicyPath"
-      $response = Read-Host "Do you want to overwrite it? [y/n]"
-      if ($response -ne 'y') {
-        Report-Status "Using existing CAPolicy.inf file" 0 Yellow
+    # Idempotency: Use existing file if it exists and was successfully parsed
+    if ($existingCAPolicy) {
+      Report-Status "Using existing CAPolicy.inf file (already configured)" 0 Green
+      Write-Host "  File: $capolicyPath" -ForegroundColor Gray
+      Write-Host "  OID: $OID" -ForegroundColor Gray
+      Write-Host "  CRL URL: $httpCRLPath" -ForegroundColor Gray
+    }
+    else {
+      # Create or update CAPolicy.inf
+      if (Test-CAPolicyExists) {
+        Write-Warning "CAPolicy.inf already exists at $capolicyPath"
+        $response = Read-Host "Do you want to overwrite it with new values? [y/n]"
+        if ($response -ne 'y') {
+          Report-Status "Using existing CAPolicy.inf file" 0 Yellow
+        }
+        else {
+          $CAPolicyInf = New-CAPolicyInfContent -OID $OID -httpCRLPath $httpCRLPath -KeyLength $script:KeyLength -CAValidityYears $script:CAValidityYears -CRLPeriodYears $script:CRLPeriodYears
+          $CAPolicyInf | Out-File $capolicyPath -Encoding utf8 -Force -ErrorAction Stop
+          Report-Status "CAPolicy.inf updated successfully" 0 Green
+        }
       }
       else {
         $CAPolicyInf = New-CAPolicyInfContent -OID $OID -httpCRLPath $httpCRLPath -KeyLength $script:KeyLength -CAValidityYears $script:CAValidityYears -CRLPeriodYears $script:CRLPeriodYears
         $CAPolicyInf | Out-File $capolicyPath -Encoding utf8 -Force -ErrorAction Stop
         Report-Status "CAPolicy.inf created successfully" 0 Green
       }
-    }
-    else {
-      $CAPolicyInf = New-CAPolicyInfContent -OID $OID -httpCRLPath $httpCRLPath -KeyLength $script:KeyLength -CAValidityYears $script:CAValidityYears -CRLPeriodYears $script:CRLPeriodYears
-      $CAPolicyInf | Out-File $capolicyPath -Encoding utf8 -Force -ErrorAction Stop
-      Report-Status "CAPolicy.inf created successfully" 0 Green
     }
 
     # Display file and allow editing
@@ -1295,8 +1400,23 @@ try {
       
       # Check installation result
       if ($installResult.RestartNeeded) {
-        Write-Warning "A restart is required to complete feature installation."
-        throw "Windows feature installation requires a restart. Please restart and run the script again."
+        Write-Host ""
+        Write-Host "========================================" -ForegroundColor Yellow
+        Write-Host "RESTART REQUIRED" -ForegroundColor Yellow
+        Write-Host "========================================" -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "Windows feature installation requires a system restart to complete." -ForegroundColor Cyan
+        Write-Host ""
+        Write-Host "NEXT STEPS:" -ForegroundColor Green
+        Write-Host "1. Restart the server now" -ForegroundColor Yellow
+        Write-Host "2. After restart, run the script again:" -ForegroundColor Yellow
+        Write-Host "   .\Build-RootCA.ps1" -ForegroundColor White
+        Write-Host "3. The script will detect the feature is already installed and continue" -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "The script will resume from where it left off after the restart." -ForegroundColor Cyan
+        Write-Host ""
+        $Script:ExitCode = 3010  # Standard Windows restart required exit code
+        exit $Script:ExitCode
       }
       
       # Validate exit code (Success = 0, NoChangeNeeded = 1, SuccessWithRestart = 3010)
